@@ -9,6 +9,16 @@ repository
 - provides kernel-based methods such as CKA.
 - provides metric RSA methods of [Williams et al. (2021)](http://arxiv.org/abs/2110.14739) and [Shahbazi et al. (2021)](https://doi.org/10.1016/j.neuroimage.2021.118271).
 
+## Entry point
+
+If `x` and `y` are matrices of data (`torch.Tensor`s specifically), each with `n` rows (where `x[i,:]` and `y[i,:]` 
+correspond to the same input), then compare representations in each using
+```python
+import repsim
+dist = repsim.compare(x, y, method='stress')
+print("The representational distance between x and y is", dist)
+```
+
 ## Terminology
 
 - Here, a **neural representation** refers to a `n` by `d` matrix containing the activity of `d` neurons in
