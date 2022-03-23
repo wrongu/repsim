@@ -13,6 +13,6 @@ def compare(x: torch.Tensor, y: torch.Tensor, method: str = 'stress', **kwargs) 
     }
 
     if method.lower() not in meths:
-        raise ValueError(f'Unrecognized Representational Similarity Method "{method}"')
+        raise ValueError(f'Unrecognized Representational Similarity Method "{method}". Options are: {meths.keys()}')
 
     return meths[method.lower()].compare(x, y, **kwargs)
