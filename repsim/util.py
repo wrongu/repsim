@@ -45,4 +45,4 @@ def corrcoef(a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON
         z_b = (b - b.mean()) / b.std(dim=-1)
         return torch.sum(z_a * z_b)
     elif type == CorrType.SPEARMAN:
-        return corrcoef(torch.argsort(a), torch.argsort(b), type=CorrType.PEARSON)
+        return corrcoef(torch.argsort(a).float(), torch.argsort(b).float(), type=CorrType.PEARSON)
