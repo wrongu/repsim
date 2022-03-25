@@ -29,8 +29,8 @@ class GeneralizedShapeMetric(BaseRepSim):
         return MetricType.ANGLE
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[kernels.Kernel, None] = None, kernel_y: Union[kernels.Kernel, None] = None) -> torch.Tensor:
-        rsm_x = pairwise.compare(x, type=CompareType.SIMILARITY, kernel=kernel_x)
-        rsm_y = pairwise.compare(y, type=CompareType.SIMILARITY, kernel=kernel_y)
+        rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
+        rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         return torch.arccos(cka(rsm_x, rsm_y))
 
 
@@ -52,7 +52,7 @@ class Stress(BaseRepSim):
 class Corr(BaseRepSim):
     """Correlation between RDMs; this is 'classic' RSA when correlation type is 'spearman'
     """
-    def __init__(self, corr_type: CorrType = CorrType.SPEARMAN, cmp_type: CompareType = CompareType.SIMILARITY):
+    def __init__(self, corr_type: CorrType = CorrType.SPEARMAN, cmp_type: CompareType = CompareType.INNER_PRODUCT):
         self._corr_type = corr_type
         self._cmp_type = cmp_type
 
@@ -77,9 +77,9 @@ class AffineInvariantRiemannian(BaseRepSim):
         return MetricType.RIEMANN
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[kernels.Kernel, None] = None, kernel_y: Union[kernels.Kernel, None] = None) -> torch.Tensor:
-        # TODO - might be faster if we do cholesky first
-        rsm_x = pairwise.compare(x, type=CompareType.SIMILARITY, kernel=kernel_x)
-        rsm_y = pairwise.compare(y, type=CompareType.SIMILARITY, kernel=kernel_y)
+        rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
+        rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
+
         x_inv_y = torch.linalg.solve(rsm_x, rsm_y)
         log_eigs = torch.log(torch.linalg.eigvalsh(x_inv_y))
         return torch.sqrt(torch.sum(log_eigs**2))

@@ -4,14 +4,16 @@ import enum
 class CompareType(enum.Enum):
     """Comparison type for repsim.compare and repsim.pairwise.compare.
 
-    CompareType.SIMILARITY: an inner product like dot(x,y). Large values = more similar.
+    CompareType.INNER_PRODUCT: an inner product like dot(x,y). Large values = more similar.
     CompareType.ANGLE: values are 'distances' in [0, pi/2]
     CompareType.DISTANCE: a distance, like ||x-y||. Small values = more similar.
     CompareType.SQUARE_DISTANCE: squared distance.
 
-    Note that SIMILARITY has a different sign than the others, indicating that high similarity means low distance and vice versa.
+    Note that INNER_PRODUCT has a different sign than the others, indicating that high inner-product means low distance
+    and vice versa.
     """
-    SIMILARITY = -1
+    INNER_PRODUCT = -1
+    ANGLE = 0
     DISTANCE = 1
     SQUARE_DISTANCE = 2
 
