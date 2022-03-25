@@ -1,6 +1,6 @@
 import torch
 from repsim import kernels
-from repsim.types import CompareType
+from repsim.util import CompareType
 from typing import Union
 
 

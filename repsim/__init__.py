@@ -1,6 +1,6 @@
 import torch
-from repsim.types import CorrType
-from repsim.repsim import Stress, GeneralizedShapeMetric, AffineInvariantRiemannian, Corr
+from repsim.util import CorrType
+from repsim.compare import Stress, GeneralizedShapeMetric, AffineInvariantRiemannian, Corr
 
 
 def compare(x: torch.Tensor, y: torch.Tensor, method: str = 'stress', **kwargs) -> torch.Tensor:
