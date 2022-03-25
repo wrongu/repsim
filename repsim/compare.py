@@ -7,14 +7,21 @@ from typing import Union
 
 
 class BaseRepSim(object):
-    """Abstract base class for all representational similarity/representational distance comparisons.
-    """
+    """Abstract base class for all representational similarity/representational distance comparisons."""
+
     @property
     def type(self) -> MetricType:
-        raise NotImplementedError('type must be specified by a subclass')
+        raise NotImplementedError("type must be specified by a subclass")
 
-    def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
-        raise NotImplementedError('compare() must be implemented by a subclass')
+    def compare(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        *,
+        kernel_x: Union[Kernel, None] = None,
+        kernel_y: Union[Kernel, None] = None,
+    ) -> torch.Tensor:
+        raise NotImplementedError("compare() must be implemented by a subclass")
 
 
 class GeneralizedShapeMetric(BaseRepSim):
@@ -24,11 +31,19 @@ class GeneralizedShapeMetric(BaseRepSim):
     Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
         Representations. NeurIPS. http://arxiv.org/abs/2110.14739
     """
+
     @property
     def type(self) -> MetricType:
         return MetricType.ANGLE
 
-    def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
+    def compare(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        *,
+        kernel_x: Union[Kernel, None] = None,
+        kernel_y: Union[Kernel, None] = None,
+    ) -> torch.Tensor:
         rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
         rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
@@ -36,13 +51,20 @@ class GeneralizedShapeMetric(BaseRepSim):
 
 
 class Stress(BaseRepSim):
-    """Difference-in-pairwise-distance, AKA 'stress' from the MDS literature.
-    """
+    """Difference-in-pairwise-distance, AKA 'stress' from the MDS literature."""
+
     @property
     def type(self):
         return MetricType.LENGTH
 
-    def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
+    def compare(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        *,
+        kernel_x: Union[Kernel, None] = None,
+        kernel_y: Union[Kernel, None] = None,
+    ) -> torch.Tensor:
         rdm_x = pairwise.compare(x, type=CompareType.DISTANCE, kernel=kernel_x)
         rdm_y = pairwise.compare(y, type=CompareType.DISTANCE, kernel=kernel_y)
         diff_in_dist = upper_triangle(rdm_x - rdm_y)
@@ -50,9 +72,13 @@ class Stress(BaseRepSim):
 
 
 class Corr(BaseRepSim):
-    """Correlation between RDMs; this is 'classic' RSA when correlation type is 'spearman'
-    """
-    def __init__(self, corr_type: CorrType = CorrType.SPEARMAN, cmp_type: CompareType = CompareType.INNER_PRODUCT):
+    """Correlation between RDMs; this is 'classic' RSA when correlation type is 'spearman'"""
+
+    def __init__(
+        self,
+        corr_type: CorrType = CorrType.SPEARMAN,
+        cmp_type: CompareType = CompareType.INNER_PRODUCT,
+    ):
         self._corr_type = corr_type
         self._cmp_type = cmp_type
 
@@ -60,10 +86,19 @@ class Corr(BaseRepSim):
     def type(self):
         return MetricType.CORR
 
-    def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
+    def compare(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        *,
+        kernel_x: Union[Kernel, None] = None,
+        kernel_y: Union[Kernel, None] = None,
+    ) -> torch.Tensor:
         rsm_x = pairwise.compare(x, type=self._cmp_type, kernel=kernel_x)
         rsm_y = pairwise.compare(y, type=self._cmp_type, kernel=kernel_y)
-        return corrcoef(upper_triangle(rsm_x), upper_triangle(rsm_y), type=self._corr_type)
+        return corrcoef(
+            upper_triangle(rsm_x), upper_triangle(rsm_y), type=self._corr_type
+        )
 
 
 class AffineInvariantRiemannian(BaseRepSim):
@@ -78,27 +113,48 @@ class AffineInvariantRiemannian(BaseRepSim):
     [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
         representations in brain and in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
     """
+
     def __init__(self, shrinkage=0.1):
         super(AffineInvariantRiemannian, self).__init__()
-        if shrinkage < 0. or shrinkage > 1.:
-            raise ValueError("Shrinkage parameter must be in [0,1], where 0 means no regularization.")
+        if shrinkage < 0.0 or shrinkage > 1.0:
+            raise ValueError(
+                "Shrinkage parameter must be in [0,1], where 0 means no regularization."
+            )
         self._shrink = shrinkage
 
     @property
     def type(self) -> MetricType:
         return MetricType.RIEMANN
 
-    def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
+    def compare(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        *,
+        kernel_x: Union[Kernel, None] = None,
+        kernel_y: Union[Kernel, None] = None,
+    ) -> torch.Tensor:
         n, d = x.size()
-        if self._shrink == 0. and (kernel_x is None or kernel_y is None or isinstance(kernel_x, Linear) or isinstance(kernel_y, Linear)):
+        if self._shrink == 0.0 and (
+            kernel_x is None
+            or kernel_y is None
+            or isinstance(kernel_x, Linear)
+            or isinstance(kernel_y, Linear)
+        ):
             # Linear kernels produce low-rank RSMs, which invalidates 'linalg.solve', giving negative eigenvalues
             # and other difficulty. Error out if we're trying to invert a rank-deficient RSM
             if n > d:
-                raise ValueError(f"Since x is size {(n, d)} and shrinkage is {self._shrink}, the Linear kernel will result in a rank-deficient RSM!")
-        rsm_x = center(pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x))
-        rsm_y = center(pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y))
+                raise ValueError(
+                    f"Since x is size {(n, d)} and shrinkage is {self._shrink}, the Linear kernel will result in a rank-deficient RSM!"
+                )
+        rsm_x = center(
+            pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
+        )
+        rsm_y = center(
+            pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
+        )
         # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
-        off_diag_n = 1. - torch.eye(n, device=rsm_x.device, dtype=rsm_x.dtype)
+        off_diag_n = 1.0 - torch.eye(n, device=rsm_x.device, dtype=rsm_x.dtype)
         rsm_x -= self._shrink * off_diag_n * rsm_x
         rsm_y -= self._shrink * off_diag_n * rsm_y
         # Compute rsm_x^{-1} @ rsm_y
@@ -107,7 +163,9 @@ class AffineInvariantRiemannian(BaseRepSim):
         return torch.sqrt(torch.sum(log_eigs**2))
 
 
-def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True) -> torch.Tensor:
+def hsic(
+    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
+) -> torch.Tensor:
     """Compute Hilbert-Schmidt Independence Criteron (HSIC)
 
     :param k_x: n by n values of kernel applied to all pairs of x data
@@ -130,13 +188,19 @@ def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased:
         k_x = k_x * (1 - torch.eye(n, device=k_x.device, dtype=k_x.dtype))
         k_y = k_y * (1 - torch.eye(n, device=k_y.device, dtype=k_y.dtype))
         # Equation (4) from Song et al (2007)
-        return ((k_x *k_y).sum() - 2*(k_x.sum(dim=0)*k_y.sum(dim=0)).sum()/(n-2) + k_x.sum()*k_y.sum()/((n-1)*(n-2))) / (n*(n-3))
+        return (
+            (k_x * k_y).sum()
+            - 2 * (k_x.sum(dim=0) * k_y.sum(dim=0)).sum() / (n - 2)
+            + k_x.sum() * k_y.sum() / ((n - 1) * (n - 2))
+        ) / (n * (n - 3))
     else:
         # The original estimator from Gretton et al (2005)
-        return torch.sum(k_x * k_y) / (n - 1)**2
+        return torch.sum(k_x * k_y) / (n - 1) ** 2
 
 
-def cka(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True) -> torch.Tensor:
+def cka(
+    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
+) -> torch.Tensor:
     """Compute Centered Kernel Alignment (CKA).
 
     :param k_x: n by n values of kernel applied to all pairs of x data
@@ -153,4 +217,10 @@ def cka(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: 
     return hsic_xy / torch.sqrt(hsic_xx * hsic_yy)
 
 
-__all__ = ["BaseRepSim", "GeneralizedShapeMetric", "Stress", "Corr", "AffineInvariantRiemannian"]
+__all__ = [
+    "BaseRepSim",
+    "GeneralizedShapeMetric",
+    "Stress",
+    "Corr",
+    "AffineInvariantRiemannian",
+]

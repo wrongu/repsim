@@ -5,7 +5,7 @@ import enum
 class CompareType(enum.Enum):
     """Comparison type for repsim.compare and repsim.pairwise.compare.
 
-    CompareType.INNER_PRODUCT: an inner product like dot(x,y). Large values = more similar.
+    CompareType.INNER_PRODUCT: an inner product like x @ y.T. Large values = more similar.
     CompareType.ANGLE: values are 'distances' in [0, pi/2]
     CompareType.DISTANCE: a distance, like ||x-y||. Small values = more similar.
     CompareType.SQUARE_DISTANCE: squared distance.
@@ -13,6 +13,7 @@ class CompareType(enum.Enum):
     Note that INNER_PRODUCT has a different sign than the others, indicating that high inner-product means low distance
     and vice versa.
     """
+
     INNER_PRODUCT = -1
     ANGLE = 0
     DISTANCE = 1
@@ -32,11 +33,12 @@ class MetricType(enum.Enum):
     Note that each of these specializes the ones above it, which is why each of the Enum values is constructed as a bit
     mask: in binary, PRE_METRIC is 00001, METRIC is 00011, LENGTH is 00111, ANGLE is 10111, and RIEMANN is 01111
     """
+
     CORR = 0x00
     PRE_METRIC = 0x01
     METRIC = 0x03
     LENGTH = 0x07
-    RIEMANN = 0x0f
+    RIEMANN = 0x0F
     ANGLE = 0x17
 
 
@@ -55,11 +57,11 @@ def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     n, d = x.size()
     if y.size()[-1] != d:
         raise ValueError("x and y must have same second dimension")
-    xx = torch.sum(x*x, dim=1)
-    yy = torch.sum(y*y, dim=1)
-    xy = torch.einsum('nd,md->nm', x, y)
+    xx = torch.sum(x * x, dim=1)
+    yy = torch.sum(y * y, dim=1)
+    xy = torch.einsum("nd,md->nm", x, y)
     # Using (x-y)*(x-y) = x*x + y+y - 2*x*y, and clipping in [0, inf) just in case of numerical imprecision
-    return torch.clip(xx[:, None] + yy[None, :] - 2 * xy, 0., None)
+    return torch.clip(xx[:, None] + yy[None, :] - 2 * xy, 0.0, None)
 
 
 def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
@@ -76,7 +78,9 @@ def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
     return A[i, j]
 
 
-def corrcoef(a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON) -> torch.Tensor:
+def corrcoef(
+    a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON
+) -> torch.Tensor:
     """Correlation coefficient between two vectors.
 
     :param a: a 1-dimensional torch.Tensor of values
@@ -88,4 +92,6 @@ def corrcoef(a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON
         z_b = (b - b.mean()) / b.std(dim=-1)
         return torch.sum(z_a * z_b)
     elif type == CorrType.SPEARMAN:
-        return corrcoef(torch.argsort(a).float(), torch.argsort(b).float(), type=CorrType.PEARSON)
+        return corrcoef(
+            torch.argsort(a).float(), torch.argsort(b).float(), type=CorrType.PEARSON
+        )

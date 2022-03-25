@@ -5,7 +5,7 @@ from repsim.util import pdist2
 
 
 class SquaredExponential(Kernel):
-    def __init__(self, length_scale='auto'):
+    def __init__(self, length_scale="auto"):
         super(SquaredExponential, self).__init__()
         self._scale = length_scale
 
@@ -13,7 +13,7 @@ class SquaredExponential(Kernel):
         self._scale = lengh_scale
 
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        if type(self._scale) is str and self._scale == 'auto':
+        if type(self._scale) is str and self._scale == "auto":
             sc = median_euclidean(x)
         else:
             sc = self._scale
@@ -22,7 +22,7 @@ class SquaredExponential(Kernel):
 
 
 class Laplace(Kernel):
-    def __init__(self, length_scale='auto'):
+    def __init__(self, length_scale="auto"):
         super(Laplace, self).__init__()
         self._scale = length_scale
 
@@ -30,7 +30,7 @@ class Laplace(Kernel):
         self._scale = lengh_scale
 
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        if type(self._scale) is str and self._scale == 'auto':
+        if type(self._scale) is str and self._scale == "auto":
             sc = median_euclidean(x)
         else:
             sc = self._scale

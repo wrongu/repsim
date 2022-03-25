@@ -4,7 +4,12 @@ from repsim.util import CompareType
 from typing import Union
 
 
-def compare(x: torch.Tensor, *, type: CompareType = CompareType.INNER_PRODUCT, kernel: Union[None, kernels.Kernel] = None) -> torch.Tensor:
+def compare(
+    x: torch.Tensor,
+    *,
+    type: CompareType = CompareType.INNER_PRODUCT,
+    kernel: Union[None, kernels.Kernel] = None
+) -> torch.Tensor:
     """Compute n by n pairwise distance (or similarity) between all pairs of rows of x.
 
     :param x: n by d matrix of data.
@@ -23,18 +28,20 @@ def compare(x: torch.Tensor, *, type: CompareType = CompareType.INNER_PRODUCT, k
         return inner_product
     elif type == CompareType.ANGLE:
         diag = torch.diag(inner_product)
-        norm_inner_product = inner_product / torch.sqrt(diag[:, None]) / torch.sqrt(diag[None, :])
+        norm_inner_product = (
+            inner_product / torch.sqrt(diag[:, None]) / torch.sqrt(diag[None, :])
+        )
         # Note: floating point instability might result in norm_inner_product being outside [-1, 1]. This results in
         # NaN angles unless we clip:
         return torch.arccos(torch.clip(norm_inner_product, -1.0, +1.0))
     elif type == CompareType.SQUARE_DISTANCE:
         self_sim = torch.diag(inner_product)
         # Using that (x_i - x_j)*(x_i - x_j) = x_i*x_i + x_j*x_j - 2*x_i*x_j
-        return self_sim[:, None] + self_sim[None, :] - 2*inner_product
+        return self_sim[:, None] + self_sim[None, :] - 2 * inner_product
     elif type == CompareType.DISTANCE:
         self_sim = torch.diag(inner_product)
         # See above
-        return torch.sqrt(self_sim[:, None] + self_sim[None, :] - 2*inner_product)
+        return torch.sqrt(self_sim[:, None] + self_sim[None, :] - 2 * inner_product)
 
 
-__all__ = ['compare']
+__all__ = ["compare"]

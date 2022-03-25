@@ -12,13 +12,20 @@ def center(k: torch.Tensor) -> torch.Tensor:
     """
     n = k.size()[0]
     if k.size() != (n, n):
-        raise ValueError(f"Expected k to be nxn square matrix, but it has size {k.size()}")
-    H = torch.eye(n, device=k.device, dtype=k.dtype) - torch.ones((n, n), device=k.device, dtype=k.dtype) / n
+        raise ValueError(
+            f"Expected k to be nxn square matrix, but it has size {k.size()}"
+        )
+    H = (
+        torch.eye(n, device=k.device, dtype=k.dtype)
+        - torch.ones((n, n), device=k.device, dtype=k.dtype) / n
+    )
     return H @ k @ H
 
 
 class Kernel(object):
-    def __call__(self, x: torch.Tensor, y: Union[None, torch.Tensor] = None) -> torch.Tensor:
+    def __call__(
+        self, x: torch.Tensor, y: Union[None, torch.Tensor] = None
+    ) -> torch.Tensor:
         if y is None:
             y = x
 
@@ -28,14 +35,18 @@ class Kernel(object):
         return self._call_impl(x, y)
 
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError('Kernel._call_impl must be implemented by a subclass')
+        raise NotImplementedError("Kernel._call_impl must be implemented by a subclass")
 
 
 class SumKernel(Kernel):
     def __init__(self, kernels: Iterable[Kernel], weights=None):
         super(SumKernel, self).__init__()
         self.kernels = list(kernels)
-        self.weights = torch.tensor(weights) if weights is not None else torch.ones(len(self.kernels))
+        self.weights = (
+            torch.tensor(weights)
+            if weights is not None
+            else torch.ones(len(self.kernels))
+        )
 
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         tot = self.weights[0] * self.kernels[0](x, y)
