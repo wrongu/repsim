@@ -46,27 +46,27 @@ In some special circumstances, we can take computational shortcuts bypassing Ste
 call anything inside `repsim.pairwise`.
 
 Applying the kernel trick is central to some of the representational similarity measures we use. The `repsim.kernels`
-module contains the kernel logic. By default, `repsim` makes all pairwise comparisons using a Squared Exponential kernel
-whose length scale adapts to the median Euclidean distance of the given data. This can be overridden in most places by
-specifying a `kernel` keyword argument to `repsim.pairwise.compare`, or a `kernel_x` and `kernel_y` argument to
-`repsim.compare`. For example:
+module contains the kernel logic. By default, `repsim` makes all pairwise comparisons using a Linear kernel - in other
+words using the usual definition of the inner-product. This can be overridden specifying a `kernel` keyword argument to
+`repsim.pairwise.compare`, or a `kernel_x` and `kernel_y` argument to `repsim.compare`. For example:
 ```python
 import repsim
 import repsim.kernels
 import repsim.pairwise
+from repsim.util import CompareType
 import torch
 
 n, d = 10, 3
 x = torch.randn(n, d)
 
-# Get pairwise distances using squared exponential kernel with an automatic length-scale (the default)
-rdm_default = repsim.pairwise.compare(x)
+# Get pairwise Euclidean distances
+rdm_linear = repsim.pairwise.compare(x, type=CompareType.DISTANCE)
 
-# Get pairwise distances using laplace kernel with an automatic length-scale
-k = repsim.kernels.Laplace()
-rdm_laplace = repsim.pairwise.compare(x, kernel=k)
+# Get pairwise distances in feature space using a laplace kernel with an automatic length-scale
+k = repsim.kernels.Laplace(length_scale='auto')
+rdm_laplace = repsim.pairwise.compare(x, kernel=k, type=CompareType.DISTANCE)
 
-# Get pairwise distances using squared exponential kernel with a custom length-scale
+# Get pairwise similarity using squared exponential kernel with a custom length-scale
 k = repsim.kernels.SquaredExponential(length_scale=0.2)
-rdm_sqexp_short = repsim.pairwise.compare(x, kernel=k)
+rsm_sqexp_short = repsim.pairwise.compare(x, kernel=k, type=CompareType.INNER_PRODUCT)
 ```
