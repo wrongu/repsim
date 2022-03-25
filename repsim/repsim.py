@@ -101,8 +101,7 @@ def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased:
     n = k_x.size()[0]
 
     if not centered:
-        h = torch.eye(n, device=k_y.device, dtype=k_y.dtype) - 1/n
-        k_y = h @ k_y @ h
+        k_y = kernels.center(k_y)
 
     if unbiased:
         # Remove the diagonal
