@@ -1,6 +1,6 @@
 import torch
-from repsim.kernels import Kernel, center
-from repsim.pairwise import compare
+from repsim.kernels import Kernel, center, Linear
+from repsim import pairwise
 from repsim.util import upper_triangle, corrcoef
 from repsim.util import MetricType, CompareType, CorrType
 from typing import Union
@@ -29,8 +29,8 @@ class GeneralizedShapeMetric(BaseRepSim):
         return MetricType.ANGLE
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
-        rsm_x = compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
-        rsm_y = compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
+        rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
+        rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
         return torch.arccos(torch.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
 
@@ -40,12 +40,11 @@ class Stress(BaseRepSim):
     """
     @property
     def type(self):
-        # TODO - is this a length or metric?
         return MetricType.LENGTH
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
-        rdm_x = compare(x, type=CompareType.DISTANCE, kernel=kernel_x)
-        rdm_y = compare(y, type=CompareType.DISTANCE, kernel=kernel_y)
+        rdm_x = pairwise.compare(x, type=CompareType.DISTANCE, kernel=kernel_x)
+        rdm_y = pairwise.compare(y, type=CompareType.DISTANCE, kernel=kernel_y)
         diff_in_dist = upper_triangle(rdm_x - rdm_y)
         return torch.sqrt(torch.mean(diff_in_dist**2))
 
@@ -62,27 +61,49 @@ class Corr(BaseRepSim):
         return MetricType.CORR
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
-        rsm_x = compare(x, type=self._cmp_type, kernel=kernel_x)
-        rsm_y = compare(y, type=self._cmp_type, kernel=kernel_y)
+        rsm_x = pairwise.compare(x, type=self._cmp_type, kernel=kernel_x)
+        rsm_y = pairwise.compare(y, type=self._cmp_type, kernel=kernel_y)
         return corrcoef(upper_triangle(rsm_x), upper_triangle(rsm_y), type=self._corr_type)
 
 
 class AffineInvariantRiemannian(BaseRepSim):
-    """Compute the 'affine-invariant Riemannian metric' between RDMs, as advocated for by Shahbazi et al (2021).
+    """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 
-    Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
+    NOTE: given (n,d) sized inputs, this involves inverting a (n,n)-sized matrix, which might be rank-deficient. The
+    authors of [1] got around this by switching the inner-product to be across conditions, and compared (d,d)-sized
+    matrices. However, this no longer suffices as a general RSA tool, since in general d_x will not equal d_y.
+
+    We get around this by regularizing the n by n matrix, shrinking it towards its diagonal (see Yatsenko et al (2015))
+
+    [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
         representations in brain and in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
     """
+    def __init__(self, shrinkage=0.1):
+        super(AffineInvariantRiemannian, self).__init__()
+        if shrinkage < 0. or shrinkage > 1.:
+            raise ValueError("Shrinkage parameter must be in [0,1], where 0 means no regularization.")
+        self._shrink = shrinkage
+
     @property
     def type(self) -> MetricType:
         return MetricType.RIEMANN
 
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
-        rsm_x = compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
-        rsm_y = compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
-
+        n, d = x.size()
+        if self._shrink == 0. and (kernel_x is None or kernel_y is None or isinstance(kernel_x, Linear) or isinstance(kernel_y, Linear)):
+            # Linear kernels produce low-rank RSMs, which invalidates 'linalg.solve', giving negative eigenvalues
+            # and other difficulty. Error out if we're trying to invert a rank-deficient RSM
+            if n > d:
+                raise ValueError(f"Since x is size {(n, d)} and shrinkage is {self._shrink}, the Linear kernel will result in a rank-deficient RSM!")
+        rsm_x = center(pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x))
+        rsm_y = center(pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y))
+        # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
+        off_diag_n = 1. - torch.eye(n, device=rsm_x.device, dtype=rsm_x.dtype)
+        rsm_x -= self._shrink * off_diag_n * rsm_x
+        rsm_y -= self._shrink * off_diag_n * rsm_y
+        # Compute rsm_x^{-1} @ rsm_y
         x_inv_y = torch.linalg.solve(rsm_x, rsm_y)
-        log_eigs = torch.log(torch.linalg.eigvalsh(x_inv_y))
+        log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
         return torch.sqrt(torch.sum(log_eigs**2))
 
 
