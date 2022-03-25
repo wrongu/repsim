@@ -1,10 +1,11 @@
 import torch
 from repsim.util import CorrType
-from repsim.compare import Stress, GeneralizedShapeMetric, AffineInvariantRiemannian, Corr
+from repsim.compare import BaseRepSim, Stress, GeneralizedShapeMetric, AffineInvariantRiemannian, Corr
+from typing import Union
 
 
-def compare(x: torch.Tensor, y: torch.Tensor, method: str = 'stress', **kwargs) -> torch.Tensor:
-    meths = {
+def compare(x: torch.Tensor, y: torch.Tensor, method: Union[BaseRepSim, str] = 'stress', **kwargs) -> torch.Tensor:
+    method_lookup = {
         'stress': Stress(),
         'generalized_shape_metric': GeneralizedShapeMetric(),
         'riemannian': AffineInvariantRiemannian(),
@@ -12,7 +13,9 @@ def compare(x: torch.Tensor, y: torch.Tensor, method: str = 'stress', **kwargs) 
         'pearson': Corr(corr_type=CorrType.PEARSON),
     }
 
-    if method.lower() not in meths:
-        raise ValueError(f'Unrecognized Representational Similarity Method "{method}". Options are: {meths.keys()}')
+    if isinstance(method, str):
+        if method.lower() not in method_lookup:
+            raise ValueError(f'Unrecognized Representational Similarity Method "{method}". Options are: {method_lookup.keys()}')
+        method = method_lookup[method.lower()]
 
-    return meths[method.lower()].compare(x, y, **kwargs)
+    return method.compare(x, y, **kwargs)

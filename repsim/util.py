@@ -58,8 +58,8 @@ def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     xx = torch.sum(x*x, dim=1)
     yy = torch.sum(y*y, dim=1)
     xy = torch.einsum('nd,md->nm', x, y)
-    # Using (x-y)*(x-y) = x*x + y+y - 2*x*y
-    return xx[:, None] + yy[None, :] - 2 * xy
+    # Using (x-y)*(x-y) = x*x + y+y - 2*x*y, and clipping in [0, inf) just in case of numerical imprecision
+    return torch.clip(xx[:, None] + yy[None, :] - 2 * xy, 0., None)
 
 
 def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
