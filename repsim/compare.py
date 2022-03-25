@@ -31,7 +31,8 @@ class GeneralizedShapeMetric(BaseRepSim):
     def compare(self, x: torch.Tensor, y: torch.Tensor, *, kernel_x: Union[Kernel, None] = None, kernel_y: Union[Kernel, None] = None) -> torch.Tensor:
         rsm_x = compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
         rsm_y = compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
-        return torch.arccos(cka(rsm_x, rsm_y))
+        # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
+        return torch.arccos(torch.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
 
 
 class Stress(BaseRepSim):

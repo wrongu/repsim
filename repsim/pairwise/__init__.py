@@ -24,7 +24,9 @@ def compare(x: torch.Tensor, *, type: CompareType = CompareType.INNER_PRODUCT, k
     elif type == CompareType.ANGLE:
         diag = torch.diag(inner_product)
         norm_inner_product = inner_product / torch.sqrt(diag[:, None]) / torch.sqrt(diag[None, :])
-        return torch.arccos(norm_inner_product)
+        # Note: floating point instability might result in norm_inner_product being outside [-1, 1]. This results in
+        # NaN angles unless we clip:
+        return torch.arccos(torch.clip(norm_inner_product, -1.0, +1.0))
     elif type == CompareType.SQUARE_DISTANCE:
         self_sim = torch.diag(inner_product)
         # Using that (x_i - x_j)*(x_i - x_j) = x_i*x_i + x_j*x_j - 2*x_i*x_j
