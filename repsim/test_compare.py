@@ -1,7 +1,7 @@
 import torch
 from repsim import compare
 from repsim.kernels import Linear, Laplace, SquaredExponential
-from repsim.compare import AffineInvariantRiemannian
+from repsim.compare_impl import AffineInvariantRiemannian
 import pytest
 
 
