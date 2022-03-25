@@ -1,5 +1,5 @@
 import torch
-from repsim.kernels import Kernel
+from repsim.kernels import Kernel, center
 from repsim.pairwise import compare
 from repsim.util import upper_triangle, corrcoef
 from repsim.util import MetricType, CompareType, CorrType
@@ -102,7 +102,7 @@ def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased:
     n = k_x.size()[0]
 
     if not centered:
-        k_y = kernels.center(k_y)
+        k_y = center(k_y)
 
     if unbiased:
         # Remove the diagonal
