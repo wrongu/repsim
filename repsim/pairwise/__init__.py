@@ -1,7 +1,8 @@
+from typing import Union
 import tensorly as tl
+import numpy as np
 from repsim import kernels
 from repsim.util import CompareType
-from typing import Union
 
 
 def compare(
@@ -33,7 +34,7 @@ def compare(
         )
         # Note: floating point instability might result in norm_inner_product being outside [-1, 1]. This results in
         # NaN angles unless we clip:
-        return tl.arccos(tl.clip(norm_inner_product, -1.0, +1.0))
+        return np.arccos(tl.clip(norm_inner_product, -1.0, +1.0))
     elif type == CompareType.SQUARE_DISTANCE:
         self_sim = tl.diag(inner_product)
         # Using that (x_i - x_j)*(x_i - x_j) = x_i*x_i + x_j*x_j - 2*x_i*x_j

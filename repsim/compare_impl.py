@@ -1,9 +1,12 @@
 import tensorly as tl
+import numpy as np
 from repsim.kernels import Kernel, center, Linear
 from repsim import pairwise
 from repsim.util import upper_triangle, corrcoef
 from repsim.util import MetricType, CompareType, CorrType
 from typing import Union
+
+e = np.e
 
 
 class BaseRepSim(object):
@@ -53,7 +56,7 @@ class GeneralizedShapeMetric(BaseRepSim):
         rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
         rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
-        return tl.arccos(tl.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
+        return np.arccos(tl.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
 
 
 class Stress(BaseRepSim):
@@ -165,7 +168,8 @@ class AffineInvariantRiemannian(BaseRepSim):
         rsm_y -= self._shrink * off_diag_n * rsm_y
         # Compute rsm_x^{-1} @ rsm_y
         x_inv_y = tl.solve(rsm_x, rsm_y)
-        log_eigs = tl.log(tl.eigh(x_inv_y)[0].real)
+        eigs = tl.eigh(x_inv_y)[0].real
+        log_eigs = tl.log2(eigs) / tl.log2(e)
         return tl.sqrt(tl.sum(log_eigs**2))
 
 

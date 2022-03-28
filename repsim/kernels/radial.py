@@ -2,6 +2,7 @@ import tensorly as tl
 from .kernel_base import Kernel
 from .length_scale import median_euclidean
 from repsim.util import pdist2
+import numpy as np
 
 
 class SquaredExponential(Kernel):
@@ -18,7 +19,7 @@ class SquaredExponential(Kernel):
         else:
             sc = self._scale
 
-        return tl.exp(-pdist2(x, y) / sc**2)
+        return np.exp(-pdist2(x, y) / sc**2)
 
 
 class Laplace(Kernel):
@@ -35,4 +36,4 @@ class Laplace(Kernel):
         else:
             sc = self._scale
 
-        return tl.exp(-tl.sqrt(pdist2(x, y)) / sc)
+        return np.exp(-tl.sqrt(pdist2(x, y)) / sc)

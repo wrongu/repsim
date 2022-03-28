@@ -1,2 +1,2 @@
 # tensorly>=0.7.0
-git+git://github.com/tensorly/tensorly.git
+git+https://github.com/tensorly/tensorly.git@master#egg=tensorly
