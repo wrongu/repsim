@@ -1,2 +1,1 @@
-torch>=1.11.0
-numpy>=1.19.3
+tensorly>=0.7.0
