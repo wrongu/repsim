@@ -1,4 +1,4 @@
-import torch
+import tensorly as tl
 from repsim.util import CorrType
 from repsim.compare_impl import (
     BaseRepSim,
@@ -11,11 +11,11 @@ from typing import Union
 
 
 def compare(
-    x: torch.Tensor,
-    y: torch.Tensor,
+    x: tl.tensor,
+    y: tl.tensor,
     method: Union[BaseRepSim, str] = "stress",
     **kwargs,
-) -> torch.Tensor:
+) -> tl.tensor:
     method_lookup = {
         "stress": Stress(),
         "generalized_shape_metric": GeneralizedShapeMetric(),

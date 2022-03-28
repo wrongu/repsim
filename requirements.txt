@@ -1,1 +1,2 @@
-tensorly>=0.7.0
+# tensorly>=0.7.0
+git+git://github.com/tensorly/tensorly.git

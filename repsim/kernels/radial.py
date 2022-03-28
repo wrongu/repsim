@@ -1,4 +1,4 @@
-import torch
+import tensorly as tl
 from .kernel_base import Kernel
 from .length_scale import median_euclidean
 from repsim.util import pdist2
@@ -12,13 +12,13 @@ class SquaredExponential(Kernel):
     def set_scale(self, lengh_scale):
         self._scale = lengh_scale
 
-    def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def _call_impl(self, x: tl.tensor, y: tl.tensor) -> tl.tensor:
         if type(self._scale) is str and self._scale == "auto":
             sc = median_euclidean(x)
         else:
             sc = self._scale
 
-        return torch.exp(-pdist2(x, y) / sc**2)
+        return tl.exp(-pdist2(x, y) / sc**2)
 
 
 class Laplace(Kernel):
@@ -29,10 +29,10 @@ class Laplace(Kernel):
     def set_scale(self, lengh_scale):
         self._scale = lengh_scale
 
-    def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def _call_impl(self, x: tl.tensor, y: tl.tensor) -> tl.tensor:
         if type(self._scale) is str and self._scale == "auto":
             sc = median_euclidean(x)
         else:
             sc = self._scale
 
-        return torch.exp(-torch.sqrt(pdist2(x, y)) / sc)
+        return tl.exp(-tl.sqrt(pdist2(x, y)) / sc)

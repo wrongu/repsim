@@ -1,12 +1,13 @@
-import torch
+import tensorly as tl
 from repsim import compare
 from repsim.kernels import Linear, Laplace, SquaredExponential
 from repsim.compare_impl import AffineInvariantRiemannian
 import pytest
+import numpy as np
 
 
 def test_compare_random_data():
-    x, y = torch.randn(10, 4), torch.randn(10, 3)
+    x, y = tl.randn(10, 4), tl.randn(10, 3)
     methods = [
         "stress",
         "generalized_shape_metric",
@@ -19,16 +20,16 @@ def test_compare_random_data():
         for meth in methods:
             val_xy = compare(x, y, method=meth, kernel_x=k, kernel_y=k)
             val_yx = compare(y, x, method=meth, kernel_x=k, kernel_y=k)
-            assert not torch.isnan(val_yx) and not torch.isnan(
+            assert not np.isnan(val_yx) and not np.isnan(
                 val_xy
             ), f"NaN value in compare() using method {meth} and kernel {k}"
-            assert torch.isclose(
+            assert np.isclose(
                 val_yx, val_xy, rtol=1e-3
             ), f"Asymmetry in comparison using method {meth} and kernel {k}: {val_yx.item()} vs {val_xy.item()}"
 
 
 def test_riemmannian_rank_deficient():
-    x, y = torch.randn(10, 4), torch.randn(10, 3)
+    x, y = tl.randn(10, 4), tl.randn(10, 3)
     unregularized = AffineInvariantRiemannian(shrinkage=0.0)
     # We expect the unregularized method to fail when x,y have more rows than columns.
     # (Note that in @test_compare_random_data above, specifying method="riemannian" defaults to a regularized version)

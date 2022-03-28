@@ -1,4 +1,4 @@
-import torch
+import tensorly as tl
 from repsim.kernels import Kernel, center, Linear
 from repsim import pairwise
 from repsim.util import upper_triangle, corrcoef
@@ -7,7 +7,11 @@ from typing import Union
 
 
 class BaseRepSim(object):
-    """Abstract base class for all representational similarity/representational distance comparisons."""
+    """
+    Abstract base class for all representational similarity/representational
+    distance comparisons.
+
+    """
 
     @property
     def type(self) -> MetricType:
@@ -15,21 +19,23 @@ class BaseRepSim(object):
 
     def compare(
         self,
-        x: torch.Tensor,
-        y: torch.Tensor,
+        x: tl.tensor,
+        y: tl.tensor,
         *,
         kernel_x: Union[Kernel, None] = None,
         kernel_y: Union[Kernel, None] = None,
-    ) -> torch.Tensor:
+    ) -> tl.tensor:
         raise NotImplementedError("compare() must be implemented by a subclass")
 
 
 class GeneralizedShapeMetric(BaseRepSim):
-    """Compute the 'generalized shape metric' between two representations x and y using the 'angle' method described by
-    Williams et al (2021)
+    """
+    Compute the 'generalized shape metric' between two representations x and y
+    using the 'angle' method described by Williams et al (2021)
 
-    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
-        Representations. NeurIPS. http://arxiv.org/abs/2110.14739
+    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021).
+    Generalized Shape Metrics on Neural Representations. NeurIPS.
+    http://arxiv.org/abs/2110.14739
     """
 
     @property
@@ -38,16 +44,16 @@ class GeneralizedShapeMetric(BaseRepSim):
 
     def compare(
         self,
-        x: torch.Tensor,
-        y: torch.Tensor,
+        x: tl.tensor,
+        y: tl.tensor,
         *,
         kernel_x: Union[Kernel, None] = None,
         kernel_y: Union[Kernel, None] = None,
-    ) -> torch.Tensor:
+    ) -> tl.tensor:
         rsm_x = pairwise.compare(x, type=CompareType.INNER_PRODUCT, kernel=kernel_x)
         rsm_y = pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
-        return torch.arccos(torch.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
+        return tl.arccos(tl.clip(cka(rsm_x, rsm_y), -1.0, 1.0))
 
 
 class Stress(BaseRepSim):
@@ -59,16 +65,16 @@ class Stress(BaseRepSim):
 
     def compare(
         self,
-        x: torch.Tensor,
-        y: torch.Tensor,
+        x: tl.tensor,
+        y: tl.tensor,
         *,
         kernel_x: Union[Kernel, None] = None,
         kernel_y: Union[Kernel, None] = None,
-    ) -> torch.Tensor:
+    ) -> tl.tensor:
         rdm_x = pairwise.compare(x, type=CompareType.DISTANCE, kernel=kernel_x)
         rdm_y = pairwise.compare(y, type=CompareType.DISTANCE, kernel=kernel_y)
         diff_in_dist = upper_triangle(rdm_x - rdm_y)
-        return torch.sqrt(torch.mean(diff_in_dist**2))
+        return tl.sqrt(tl.mean(diff_in_dist**2))
 
 
 class Corr(BaseRepSim):
@@ -88,12 +94,12 @@ class Corr(BaseRepSim):
 
     def compare(
         self,
-        x: torch.Tensor,
-        y: torch.Tensor,
+        x: tl.tensor,
+        y: tl.tensor,
         *,
         kernel_x: Union[Kernel, None] = None,
         kernel_y: Union[Kernel, None] = None,
-    ) -> torch.Tensor:
+    ) -> tl.tensor:
         rsm_x = pairwise.compare(x, type=self._cmp_type, kernel=kernel_x)
         rsm_y = pairwise.compare(y, type=self._cmp_type, kernel=kernel_y)
         return corrcoef(
@@ -128,12 +134,12 @@ class AffineInvariantRiemannian(BaseRepSim):
 
     def compare(
         self,
-        x: torch.Tensor,
-        y: torch.Tensor,
+        x: tl.tensor,
+        y: tl.tensor,
         *,
         kernel_x: Union[Kernel, None] = None,
         kernel_y: Union[Kernel, None] = None,
-    ) -> torch.Tensor:
+    ) -> tl.tensor:
         n, d = x.size()
         if self._shrink == 0.0 and (
             kernel_x is None
@@ -154,18 +160,18 @@ class AffineInvariantRiemannian(BaseRepSim):
             pairwise.compare(y, type=CompareType.INNER_PRODUCT, kernel=kernel_y)
         )
         # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
-        off_diag_n = 1.0 - torch.eye(n, device=rsm_x.device, dtype=rsm_x.dtype)
+        off_diag_n = 1.0 - tl.eye(n, device=rsm_x.device, dtype=rsm_x.dtype)
         rsm_x -= self._shrink * off_diag_n * rsm_x
         rsm_y -= self._shrink * off_diag_n * rsm_y
         # Compute rsm_x^{-1} @ rsm_y
-        x_inv_y = torch.linalg.solve(rsm_x, rsm_y)
-        log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
-        return torch.sqrt(torch.sum(log_eigs**2))
+        x_inv_y = tl.solve(rsm_x, rsm_y)
+        log_eigs = tl.log(tl.eigh(x_inv_y)[0].real)
+        return tl.sqrt(tl.sum(log_eigs**2))
 
 
 def hsic(
-    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
-) -> torch.Tensor:
+    k_x: tl.tensor, k_y: tl.tensor, centered: bool = False, unbiased: bool = True
+) -> tl.tensor:
     """Compute Hilbert-Schmidt Independence Criteron (HSIC)
 
     :param k_x: n by n values of kernel applied to all pairs of x data
@@ -185,8 +191,8 @@ def hsic(
 
     if unbiased:
         # Remove the diagonal
-        k_x = k_x * (1 - torch.eye(n, device=k_x.device, dtype=k_x.dtype))
-        k_y = k_y * (1 - torch.eye(n, device=k_y.device, dtype=k_y.dtype))
+        k_x = k_x * (1 - tl.eye(n, device=k_x.device, dtype=k_x.dtype))
+        k_y = k_y * (1 - tl.eye(n, device=k_y.device, dtype=k_y.dtype))
         # Equation (4) from Song et al (2007)
         return (
             (k_x * k_y).sum()
@@ -195,12 +201,12 @@ def hsic(
         ) / (n * (n - 3))
     else:
         # The original estimator from Gretton et al (2005)
-        return torch.sum(k_x * k_y) / (n - 1) ** 2
+        return tl.sum(k_x * k_y) / (n - 1) ** 2
 
 
 def cka(
-    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
-) -> torch.Tensor:
+    k_x: tl.tensor, k_y: tl.tensor, centered: bool = False, unbiased: bool = True
+) -> tl.tensor:
     """Compute Centered Kernel Alignment (CKA).
 
     :param k_x: n by n values of kernel applied to all pairs of x data
@@ -214,7 +220,7 @@ def cka(
     hsic_xy = hsic(k_x, k_y, centered, unbiased)
     hsic_xx = hsic(k_x, k_x, centered, unbiased)
     hsic_yy = hsic(k_y, k_y, centered, unbiased)
-    return hsic_xy / torch.sqrt(hsic_xx * hsic_yy)
+    return hsic_xy / tl.sqrt(hsic_xx * hsic_yy)
 
 
 __all__ = [
