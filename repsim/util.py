@@ -75,7 +75,7 @@ def upper_triangle(A: tl.tensor, offset=1) -> tl.tensor:
     if (A.ndim != 2) or (A.size()[0] != A.size()[1]):
         raise ValueError("A must be square")
 
-    i, j = np.triu_indices(*A.size(), offset=offset, device=A.device)
+    i, j = np.triu_indices(*A.size(), offset)
     return A[i, j]
 
 
