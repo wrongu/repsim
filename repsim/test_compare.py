@@ -1,7 +1,6 @@
 import torch
-from repsim import compare
 from repsim.kernels import Linear, Laplace, SquaredExponential
-from repsim.compare_impl import AffineInvariantRiemannian
+from repsim import compare, Stress, GeneralizedShapeMetric, AffineInvariantRiemannian
 import pytest
 
 
@@ -25,6 +24,21 @@ def test_compare_random_data():
             assert torch.isclose(
                 val_yx, val_xy, rtol=1e-3
             ), f"Asymmetry in comparison using method {meth} and kernel {k}: {val_yx.item()} vs {val_xy.item()}"
+
+
+def test_compare_rdms_directly():
+    x, y = torch.randn(10, 4), torch.randn(10, 3)
+    kernel = SquaredExponential()
+    k_x, k_y = kernel(x), kernel(y)
+    for method in [Stress(), GeneralizedShapeMetric(), AffineInvariantRiemannian()]:
+            val_xy = method.compare_rdm(k_x, k_y)
+            val_yx = method.compare_rdm(k_y, k_x)
+            assert not torch.isnan(val_yx) and not torch.isnan(
+                val_xy
+            ), f"NaN value in compare() using method {method}"
+            assert torch.isclose(
+                val_yx, val_xy, rtol=1e-3
+            ), f"Asymmetry in comparison using method {method}: {val_yx.item()} vs {val_xy.item()}"
 
 
 def test_riemmannian_rank_deficient():

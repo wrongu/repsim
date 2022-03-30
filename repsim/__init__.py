@@ -32,3 +32,6 @@ def compare(
         method = method_lookup[method.lower()]
 
     return method.compare(x, y, **kwargs)
+
+
+__all__ = ["compare", "BaseRepSim", "Stress", "GeneralizedShapeMetric", "AffineInvariantRiemannian", "Corr"]
