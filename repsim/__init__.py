@@ -1,11 +1,10 @@
 import torch
 from repsim.util import CorrType
 from repsim.compare_impl import (
-    BaseRepSim,
+    RepresentationMetricSpace,
     Stress,
     GeneralizedShapeMetric,
     AffineInvariantRiemannian,
-    Corr,
 )
 from typing import Union
 
@@ -13,25 +12,25 @@ from typing import Union
 def compare(
     x: torch.Tensor,
     y: torch.Tensor,
-    method: Union[BaseRepSim, str] = "stress",
-    **kwargs,
+    method: Union[RepresentationMetricSpace, str] = "stress",
+    **kwargs
 ) -> torch.Tensor:
-    method_lookup = {
-        "stress": Stress(),
-        "generalized_shape_metric": GeneralizedShapeMetric(),
-        "riemannian": AffineInvariantRiemannian(),
-        "spearman": Corr(corr_type=CorrType.SPEARMAN),
-        "pearson": Corr(corr_type=CorrType.PEARSON),
+    metric_lookup = {
+        "stress": Stress,
+        "generalized_shape_metric": GeneralizedShapeMetric,
+        "riemannian": AffineInvariantRiemannian,
     }
 
     if isinstance(method, str):
-        if method.lower() not in method_lookup:
+        if method.lower() not in metric_lookup:
             raise ValueError(
-                f'Unrecognized Representational Similarity Method "{method}". Options are: {method_lookup.keys()}'
+                f'Unrecognized Representational Similarity Method "{method}". Options are: {metric_lookup.keys()}'
             )
-        method = method_lookup[method.lower()]
+        method = metric_lookup[method.lower()](n=x.size()[0], **kwargs)
+    elif not isinstance(method, RepresentationMetricSpace):
+        raise ValueError(f"Method must be string or RepresentationMetricSpace instance, but was {type(method)}")
 
-    return method.compare(x, y, **kwargs)
+    return method.length(method.to_rdm(x), method.to_rdm(y))
 
 
-__all__ = ["compare", "BaseRepSim", "Stress", "GeneralizedShapeMetric", "AffineInvariantRiemannian", "Corr"]
+__all__ = ["compare", "RepresentationMetricSpace", "Stress", "GeneralizedShapeMetric", "AffineInvariantRiemannian"]
