@@ -70,3 +70,21 @@ rdm_laplace = repsim.pairwise.compare(x, kernel=k, type=CompareType.DISTANCE)
 k = repsim.kernels.SquaredExponential(length_scale=0.2)
 rsm_sqexp_short = repsim.pairwise.compare(x, kernel=k, type=CompareType.INNER_PRODUCT)
 ```
+
+## Testing and Generating Documentation
+
+To test, run `pytest` from the root directory.
+
+```shell
+pytest
+```
+
+To generate documentation, run `docshund` from the root directory.
+
+(`pip install docshund`)
+
+```shell
+docshund ./repsim
+```
+
+This will generate API reference documentation in the `docs/` directory. Note that this does not require importing the package, and can be done without installing dependencies.
