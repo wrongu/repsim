@@ -39,7 +39,7 @@ def _test_geodesic_helper(x, y, metric):
     print(F"{metric}: {converged}")
 
     tolerance=1e-4
-    assert converged.value & OptimResult.CONVERGED.value, \
+    assert converged == OptimResult.CONVERGED, \
         f"Midpoint failed to converge using {metric}: {mid}"
     assert metric.contains(mid, atol=tolerance), \
         f"Midpoint failed contains() test using {metric}, {metric}"
