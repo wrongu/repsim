@@ -1,6 +1,6 @@
 import torch
 from repsim.kernels import Linear, Laplace, SquaredExponential
-from repsim import compare, Stress, GeneralizedShapeMetric, AffineInvariantRiemannian
+from repsim import compare, Stress, AngularCKA, AffineInvariantRiemannian
 import pytest
 
 
@@ -8,7 +8,7 @@ def test_compare_random_data():
     x, y = torch.randn(10, 4), torch.randn(10, 3)
     methods = [
         "stress",
-        "generalized_shape_metric",
+        "angular_cka",
         "riemannian",
     ]
     kernels = [Linear(), Laplace(), SquaredExponential()]
@@ -28,7 +28,7 @@ def test_compare_rdms_directly():
     x, y = torch.randn(10, 4), torch.randn(10, 3)
     kernel = SquaredExponential()
     k_x, k_y = kernel(x), kernel(y)
-    for method in [Stress(n=10), GeneralizedShapeMetric(n=10), AffineInvariantRiemannian(n=10)]:
+    for method in [Stress(n=10), AngularCKA(n=10), AffineInvariantRiemannian(n=10)]:
             val_xy = method.length(k_x, k_y)
             val_yx = method.length(k_y, k_x)
             assert not torch.isnan(val_yx) and not torch.isnan(

@@ -40,9 +40,9 @@ class RepresentationMetricSpace(SymmetricMatrix):
         return self.length(self.to_rdm(x), self.to_rdm(y))
 
 
-class GeneralizedShapeMetric(RepresentationMetricSpace, SPDMatrix):
-    """Compute the 'generalized shape metric' between two representations x and y using the 'angle' method described by
-    Williams et al (2021)
+class AngularCKA(RepresentationMetricSpace, SPDMatrix):
+    """Compute the angular distance between two representations x and y using the arccos(CKA) method described in the
+    supplement of Williams et al (2021)
 
     Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
         Representations. NeurIPS. http://arxiv.org/abs/2110.14739
@@ -177,8 +177,7 @@ def cka(
 
 __all__ = [
     "RepresentationMetricSpace",
-    "GeneralizedShapeMetric",
+    "AngularCKA",
     "Stress",
-    "Corr",
     "AffineInvariantRiemannian",
 ]

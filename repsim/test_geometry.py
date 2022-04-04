@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from repsim import Stress, GeneralizedShapeMetric, AffineInvariantRiemannian
+from repsim import Stress, AngularCKA, AffineInvariantRiemannian
 from repsim.geometry.optimize import OptimResult
 from repsim.geometry.trig import angle
 from repsim.geometry.geodesic import midpoint, project_along
@@ -13,7 +13,7 @@ def test_geodesic_stress():
 
 def test_geodesic_shape():
     x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_geodesic_helper(x, y, GeneralizedShapeMetric(n=5))
+    _test_geodesic_helper(x, y, AngularCKA(n=5))
 
 
 def test_geodesic_riemann():
@@ -60,7 +60,7 @@ def test_project_stress():
 
 def test_project_shape():
     x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_project_helper(x, y, z, GeneralizedShapeMetric(n=5))
+    _test_project_helper(x, y, z, AngularCKA(n=5))
 
 
 def test_project_riemann():
