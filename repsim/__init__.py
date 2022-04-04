@@ -1,6 +1,6 @@
 import torch
 from repsim.util import CorrType
-from repsim.compare_impl import (
+from repsim.metrics import (
     RepresentationMetricSpace,
     Stress,
     GeneralizedShapeMetric,
