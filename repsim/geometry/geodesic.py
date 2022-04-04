@@ -33,6 +33,51 @@ def subdivide_geodesic(pt_a: Point,
         return [pt_a, midpt, pt_b]
 
 
+def project_along(pt_fro: Point,
+                  pt_to: Point,
+                  pt_a: Point,
+                  space: Manifold,
+                  tol=1e-6) -> Tuple[Point, OptimResult]:
+    """Find 'projection' of pt_a onto a geodesic that spans [pt_fro, pt_to]
+
+    :param pt_fro: start point of the geodesic
+    :param pt_to: end point of the geodesic
+    :param pt_a: point to be projected
+    :param space: a Manifold
+    :param tol: result will be within this tolerance, as measured by space.length
+    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
+    from pt_a to pt_x is minimized
+    """
+    dist_a_fro, dist_a_to = space.length(pt_fro, pt_a), space.length(pt_a, pt_to)
+    # Break-early case 1: pt_a is already along a geodesic
+    if torch.isclose(dist_a_fro + dist_a_to, space.length(pt_fro, pt_to), atol=tol):
+        return pt_a.clone(), OptimResult.CONVERGED
+    # Break-early case 2: pt_fro and pt_to are the same point
+    elif space.length(pt_fro, pt_to) < tol:
+        return space.project((pt_fro+pt_to)/2), OptimResult.CONVERGED
+
+    # Get a midpoint between 'fro' and 'to'. TODO if multiple geodesics, need to pick whichever is closest to pt_a
+    mid, status = midpoint(pt_fro, pt_to, space)
+    if status != OptimResult.CONVERGED:
+        warnings.warn("midpoint() failed to converge. result of project_along() may be inaccurate")
+
+    # Distance from a to mid
+    dist_a_mid = space.length(mid, pt_a)
+
+    # Recursively subdivide the geodesic
+    if dist_a_mid < min(dist_a_fro, dist_a_to):
+        # Midpoint is min.. recurse to whichever side is closer to pt_a
+        if dist_a_fro < dist_a_to:
+            return project_along(pt_fro, mid, pt_a, space, tol=tol)
+        else:
+            return project_along(mid, pt_to, pt_a, space, tol=tol)
+    elif dist_a_fro < dist_a_to:
+        # Dist to 'pt_fro' is min. Recurse left.
+        return project_along(pt_fro, mid, pt_a, space, tol=tol)
+    else:
+        # Dist to 'pt_to' is min. Recurse right.
+        return project_along(mid, pt_fro, pt_a, space, tol=tol)
+
 def point_along(pt_a: Point,
                 pt_b: Point,
                 space: Manifold,
