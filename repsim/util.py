@@ -3,7 +3,8 @@ import enum
 
 
 class CompareType(enum.Enum):
-    """Comparison type for repsim.compare and repsim.pairwise.compare.
+    """
+    Comparison type for repsim.compare and repsim.pairwise.compare.
 
     CompareType.INNER_PRODUCT: an inner product like x @ y.T. Large values = more similar.
     CompareType.ANGLE: values are 'distances' in [0, pi/2]
@@ -21,7 +22,8 @@ class CompareType(enum.Enum):
 
 
 class MetricType(enum.Enum):
-    """Different levels of strictness for measuring distance from x to y.
+    """
+    Different levels of strictness for measuring distance from x to y.
 
     MetricType.CORR: the result isn't a metric but a correlation in [-1, 1]. Large values indicate low 'distance', sort of.
     MetricType.PRE_METRIC: a function d(x, y) that satisfies d(x,x)=0 and x(d,y)>=0
@@ -48,7 +50,8 @@ class CorrType(enum.Enum):
 
 
 def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-    """Compute squared pairwise distances (x-y)*(x-y)
+    """
+    Compute squared pairwise distances (x-y)*(x-y)
 
     :param x: n by d matrix of d-dimensional values
     :param y: m by d matrix of d-dimensional values
@@ -65,7 +68,8 @@ def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
 
 
 def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
-    """Get the upper-triangular elements of a square matrix.
+    """
+    Get the upper-triangular elements of a square matrix.
 
     :param A: square matrix
     :param offset: number of diagonals to exclude, including the main diagonal. Deafult is 1.
@@ -81,7 +85,8 @@ def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
 def corrcoef(
     a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON
 ) -> torch.Tensor:
-    """Correlation coefficient between two vectors.
+    """
+    Correlation coefficient between two vectors.
 
     :param a: a 1-dimensional torch.Tensor of values
     :param b: a 1-dimensional torch.Tensor of values

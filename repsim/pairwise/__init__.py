@@ -10,12 +10,20 @@ def compare(
     type: CompareType = CompareType.INNER_PRODUCT,
     kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
-    """Compute n by n pairwise distance (or similarity) between all pairs of rows of x.
+    """
+    Compute n by n pairwise distance (or similarity) between all pairs of rows of x.
 
-    :param x: n by d matrix of data.
-    :param type: a CompareType enum value - one of (INNER_PRODUCT, ANGLE, DISTANCE, SQUARE_DISTANCE)
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on a Linear kernel
-    :return: n by n matrix of pairwise comparisons (similarity, distance, or squared distance, depending on 'type')
+    Arguments:
+        x: n by d matrix of data.
+        type: a CompareType enum value - one of (INNER_PRODUCT, ANGLE, DISTANCE,
+            SQUARE_DISTANCE)
+        kernel: a kernels.Kernel instance, or None. Defaults to None, which
+            falls back on a Linear kernel
+
+    Returns:
+        n by n matrix of pairwise comparisons (similarity, distance, or squared
+            distance, depending on 'type')
+
     """
 
     if kernel is None:

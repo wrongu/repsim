@@ -13,8 +13,23 @@ def compare(
     x: torch.Tensor,
     y: torch.Tensor,
     method: Union[RepresentationMetricSpace, str] = "stress",
-    **kwargs
+    **kwargs,
 ) -> torch.Tensor:
+    """
+    Compute n by n pairwise distance (or similarity) between all pairs of rows of x.
+
+    Arguments:
+        x (torch.Tensor): n by d matrix of data.
+        y (torch.Tensor): n by d matrix of data.
+        method (Union[RepresentationMetricSpace, str]): a RepresentationMetricSpace
+            instance, or a string indicating which metric to use. Defaults to "stress".
+        **kwargs: keyword arguments to pass to the metric.
+
+    Returns:
+        n by n matrix of pairwise comparisons (similarity, distance, or squared
+            distance, depending on 'type')
+
+    """
     metric_lookup = {
         "stress": Stress,
         "angular_cka": AngularCKA,
@@ -28,9 +43,17 @@ def compare(
             )
         method = metric_lookup[method.lower()](n=x.size()[0], **kwargs)
     elif not isinstance(method, RepresentationMetricSpace):
-        raise ValueError(f"Method must be string or RepresentationMetricSpace instance, but was {type(method)}")
+        raise ValueError(
+            f"Method must be string or RepresentationMetricSpace instance, but was {type(method)}"
+        )
 
     return method.length(method.to_rdm(x), method.to_rdm(y))
 
 
-__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA", "AffineInvariantRiemannian"]
+__all__ = [
+    "compare",
+    "RepresentationMetricSpace",
+    "Stress",
+    "AngularCKA",
+    "AffineInvariantRiemannian",
+]

@@ -1,6 +1,12 @@
 import torch
 from repsim.kernels import center
-from repsim.geometry.manifold import SymmetricMatrix, SPDMatrix, DistMatrix, Point, Scalar
+from repsim.geometry.manifold import (
+    SymmetricMatrix,
+    SPDMatrix,
+    DistMatrix,
+    Point,
+    Scalar,
+)
 from repsim import pairwise
 from repsim.util import upper_triangle
 from repsim.util import MetricType, CompareType
@@ -11,9 +17,13 @@ NeuralData = torch.Tensor
 
 
 class RepresentationMetricSpace(SymmetricMatrix):
-    """Base mixin class for all representational similarity/representational distance comparisons. Subclasses will
-    inherit from *both* RepresentationMetricSpace and *one of* SPDMatrix or DistMatrix.
     """
+    Base mixin class for all representational similarity/representational
+    distance comparisons. Subclasses will inherit from *both*
+    RepresentationMetricSpace and *one of* SPDMatrix or DistMatrix.
+
+    """
+
     def __init__(self, n: int, kernel=None):
         super(RepresentationMetricSpace, self).__init__(rows=n)
         self._kernel = kernel
@@ -32,20 +42,19 @@ class RepresentationMetricSpace(SymmetricMatrix):
         """
         return pairwise.compare(x, kernel=self._kernel, type=self.compare_type)
 
-    def representational_distance(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor
-    ) -> Scalar:
+    def representational_distance(self, x: torch.Tensor, y: torch.Tensor) -> Scalar:
         return self.length(self.to_rdm(x), self.to_rdm(y))
 
 
 class AngularCKA(RepresentationMetricSpace, SPDMatrix):
-    """Compute the angular distance between two representations x and y using the arccos(CKA) method described in the
-    supplement of Williams et al (2021)
+    """
+    Compute the angular distance between two representations x and y using the
+    arccos(CKA) method described in the supplement of Williams et al (2021).
 
-    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
-        Representations. NeurIPS. http://arxiv.org/abs/2110.14739
+    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021).
+    Generalized Shape Metrics on Neural Representations. NeurIPS.
+    http://arxiv.org/abs/2110.14739
+
     """
 
     @property
@@ -62,7 +71,10 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
 
 
 class Stress(RepresentationMetricSpace, DistMatrix):
-    """Difference-in-pairwise-distance, AKA 'stress' from the MDS literature."""
+    """
+    Difference-in-pairwise-distance, AKA 'stress' from the MDS literature.
+
+    """
 
     @property
     def metric_type(self) -> MetricType:
@@ -78,20 +90,25 @@ class Stress(RepresentationMetricSpace, DistMatrix):
 
 
 class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
-    """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
+    """
+    Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 
-    NOTE: given (n,d) sized inputs, this involves inverting a (n,n)-sized matrix, which might be rank-deficient. The
-    authors of [1] got around this by switching the inner-product to be across conditions, and compared (d,d)-sized
-    matrices. However, this no longer suffices as a general RSA tool, since in general d_x will not equal d_y.
+    NOTE: given (n,d) sized inputs, this involves inverting a (n,n)-sized
+    matrix, which might be rank-deficient. The authors of [1] got around this
+    by switching the inner-product to be across conditions, and compared
+    (d,d)-sized matrices. However, this no longer suffices as a general RSA
+    tool, since in general d_x will not equal d_y.
 
-    We get around this by regularizing the n by n matrix, shrinking it towards its diagonal (see Yatsenko et al (2015))
+    We get around this by regularizing the n by n matrix, shrinking it towards
+    its diagonal (see Yatsenko et al (2015))
 
-    [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
-        representations in brain and in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
+    [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using
+    distance on the Riemannian manifold to compare representations in brain and
+    in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
     """
 
     def __init__(self, **kwargs):
-        shrinkage = kwargs.pop('shrinkage', 0.1)
+        shrinkage = kwargs.pop("shrinkage", 0.1)
         super().__init__(**kwargs)
         if shrinkage < 0.0 or shrinkage > 1.0:
             raise ValueError(
@@ -113,8 +130,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
         off_diag_n = 1.0 - torch.eye(n, device=rdm_x.device, dtype=rdm_x.dtype)
         rdm_x = rdm_x - self._shrink * off_diag_n * rdm_x
         rdm_y = rdm_y - self._shrink * off_diag_n * rdm_y
-        if torch.linalg.matrix_rank(rdm_x) < self.shape[0] or torch.linalg.matrix_rank(rdm_y) < self.shape[0]:
-            raise ValueError(f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!")
+        if (
+            torch.linalg.matrix_rank(rdm_x) < self.shape[0]
+            or torch.linalg.matrix_rank(rdm_y) < self.shape[0]
+        ):
+            raise ValueError(
+                f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!"
+            )
         # Compute rdm_x^{-1} @ rdm_y
         x_inv_y = torch.linalg.solve(rdm_x, rdm_y)
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
@@ -124,15 +146,21 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
 def hsic(
     k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
 ) -> torch.Tensor:
-    """Compute Hilbert-Schmidt Independence Criteron (HSIC)
-
-    :param k_x: n by n values of kernel applied to all pairs of x data
-    :param k_y: n by n values of kernel on y data
-    :param centered: whether or not at least one kernel is already centered
-    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original estimator of Gretton et al (2005)
-    :return: scalar score in [0*, inf) measuring dependence of x and y
+    """
+    Compute Hilbert-Schmidt Independence Criteron (HSIC)
 
     * note that if unbiased=True, it is possible to get small values below 0.
+
+    Arguments;
+        k_x: n by n values of kernel applied to all pairs of x data
+        k_y: n by n values of kernel on y data
+        centered: whether or not at least one kernel is already centered
+        unbiased: if True, use unbiased HSIC estimator of Song et al (2007),
+            else use original estimator of Gretton et al (2005)
+
+    Returns:
+        scalar score in [0*, inf) measuring dependence of x and y
+
     """
     if k_x.size() != k_y.size():
         raise ValueError("RDMs must have the same size!")
@@ -159,13 +187,17 @@ def hsic(
 def cka(
     k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
 ) -> torch.Tensor:
-    """Compute Centered Kernel Alignment (CKA).
+    """
+    Compute Centered Kernel Alignment (CKA).
 
-    :param k_x: n by n values of kernel applied to all pairs of x data
-    :param k_y: n by n values of kernel on y data
-    :param centered: whether or not at least one kernel is already centered
-    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original estimator of Gretton et al (2005)
-    :return: scalar score in [0*, 1] measuring normalized dependence between x and y.
+    Arguments:
+        k_x: n by n values of kernel applied to all pairs of x data
+        k_y: n by n values of kernel on y data
+        centered: whether or not at least one kernel is already centered
+        unbiased: if True, use unbiased HSIC estimator of Song et al (2007),
+            else use original estimator of Gretton et al (2005)
+    Returns:
+        scalar score in [0*, 1] measuring normalized dependence between x and y
 
     * note that if unbiased=True, it is possible to get small values below 0.
     """

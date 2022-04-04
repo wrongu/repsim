@@ -29,14 +29,14 @@ def test_compare_rdms_directly():
     kernel = SquaredExponential()
     k_x, k_y = kernel(x), kernel(y)
     for method in [Stress(n=10), AngularCKA(n=10), AffineInvariantRiemannian(n=10)]:
-            val_xy = method.length(k_x, k_y)
-            val_yx = method.length(k_y, k_x)
-            assert not torch.isnan(val_yx) and not torch.isnan(
-                val_xy
-            ), f"NaN value in compare() using method {method}"
-            assert torch.isclose(
-                val_yx, val_xy, rtol=1e-3
-            ), f"Asymmetry in comparison using method {method}: {val_yx.item()} vs {val_xy.item()}"
+        val_xy = method.length(k_x, k_y)
+        val_yx = method.length(k_y, k_x)
+        assert not torch.isnan(val_yx) and not torch.isnan(
+            val_xy
+        ), f"NaN value in compare() using method {method}"
+        assert torch.isclose(
+            val_yx, val_xy, rtol=1e-3
+        ), f"Asymmetry in comparison using method {method}: {val_yx.item()} vs {val_xy.item()}"
 
 
 def test_riemmannian_rank_deficient():

@@ -10,16 +10,36 @@ class OptimResult(enum.Enum):
     CONDITIONS_VIOLATED = 2
 
 
-def minimize(fun: Callable[[Point], Scalar],
-             init: Point,
-             space: Manifold,
-             *,
-             pt_tol: float = 1e-6,
-             fn_tol: float = 1e-6,
-             init_step_size: float = 0.1,
-             wolfe_c1=1e-4,
-             wolfe_c2=0.9,
-             max_iter: int = 10000) -> Tuple[Point, OptimResult]:
+def minimize(
+    fun: Callable[[Point], Scalar],
+    init: Point,
+    space: Manifold,
+    *,
+    pt_tol: float = 1e-6,
+    fn_tol: float = 1e-6,
+    init_step_size: float = 0.1,
+    wolfe_c1=1e-4,
+    wolfe_c2=0.9,
+    max_iter: int = 10000
+) -> Tuple[Point, OptimResult]:
+    """
+    Minimize a function in a given space.
+
+    Arguments:
+        fun (Callable[[Point], Scalar]): The function to minimize.
+        init (Point): The initial point.
+        space (Manifold): The manifold in which to minimize.
+        pt_tol (float): The tolerance for the point.
+        fn_tol (float): The tolerance for the function value.
+        init_step_size (float): The initial step size.
+        wolfe_c1 (float): The Wolfe condition parameter c1.
+        wolfe_c2 (float): The Wolfe condition parameter c2.
+        max_iter (int): The maximum number of iterations.
+
+    Returns:
+        Tuple[Point, OptimResult]: The optimized point and the result.
+
+    """
 
     def fn_wrapper(x):
         x.requires_grad_(True)
@@ -36,18 +56,23 @@ def minimize(fun: Callable[[Point], Scalar],
         new_fval, new_grad = fn_wrapper(new_pt)
 
         # Test for convergence
-        if space.length(pt.detach(), new_pt.detach()) <= pt_tol and \
-                new_fval <= fval and \
-                fval - new_fval <= fn_tol:
-            return new_pt.detach() if new_fval < fval else pt.detach(), OptimResult.CONVERGED
+        if (
+            space.length(pt.detach(), new_pt.detach()) <= pt_tol
+            and new_fval <= fval
+            and fval - new_fval <= fn_tol
+        ):
+            return (
+                new_pt.detach() if new_fval < fval else pt.detach(),
+                OptimResult.CONVERGED,
+            )
 
         # Check Wolfe conditions
         sq_step_size = (grad * step_direction).sum()
         condition_i = new_fval <= fval + wolfe_c1 * step_size * sq_step_size
-        condition_ii = -(step_direction*new_grad).sum() <= -wolfe_c2 * sq_step_size
+        condition_ii = -(step_direction * new_grad).sum() <= -wolfe_c2 * sq_step_size
         if condition_i and condition_ii:
             # Both conditions met! Update pt and loop.
-            pt, fval, grad, itr = new_pt.detach().clone(), new_fval, new_grad, itr+1
+            pt, fval, grad, itr = new_pt.detach().clone(), new_fval, new_grad, itr + 1
         elif condition_i and not condition_ii:
             # Step size is too small - adjust and loop, leaving pt, fval, itr, and grad unchanged
             step_size *= 1.1
