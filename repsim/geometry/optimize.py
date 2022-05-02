@@ -22,10 +22,7 @@ def minimize(fun: Callable[[Point], Scalar],
              max_iter: int = 10000) -> Tuple[Point, OptimResult]:
 
     def fn_wrapper(x):
-        x.requires_grad_(True)
-        f = fun(x)
-        g = torch.autograd.grad(f, x)[0]
-        return f.detach(), g
+        return fun(x), torch.autograd.functional.jacobian(fun, x)
 
     itr, step_size, pt = 0, init_step_size, init.clone()
     fval, grad = fn_wrapper(pt)

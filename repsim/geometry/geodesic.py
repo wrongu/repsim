@@ -107,11 +107,8 @@ def point_along(pt_a: Point,
 
     def calc_error(pt_c):
         # Two sources of error: total length should be dist_ab, and dist_a/(dist_a+dist_b) should equal 'frac'
-        dist_a, dist_b = space.length(pt_a, pt_c), space.length(pt_c, pt_b)
-        total_length = dist_a + dist_b
-        length_error = torch.clip(total_length - dist_ab, 0., None)
-        frac_error = torch.abs(dist_a - frac*dist_ab)
-        return length_error + frac_error
+        dist_ac, dist_bc = space.length(pt_a, pt_c), space.length(pt_c, pt_b)
+        return dist_ac*dist_ac*(1-frac) + dist_bc*dist_bc*frac
 
     return minimize(calc_error, pt, space, **kwargs)
 

@@ -3,7 +3,7 @@ import numpy as np
 from repsim import Stress, AngularCKA, AffineInvariantRiemannian
 from repsim.geometry.optimize import OptimResult
 from repsim.geometry.trig import angle
-from repsim.geometry.geodesic import midpoint, project_along
+from repsim.geometry.geodesic import point_along, project_along
 
 
 def test_geodesic_stress():
@@ -31,24 +31,24 @@ def _test_geodesic_helper(x, y, metric):
 
     # Note: we'll insist on computing the midpoint with tolerance/2, then do later checks up to tolerance. This just
     # gives a slight margin.
-    tolerance = 1e-4
-    mid, converged = midpoint(k_x, k_y, metric, pt_tol=tolerance/2, fn_tol=1e-6)
+    frac, tolerance = np.random.rand(1)[0], 1e-4
+    k_z, converged = point_along(k_x, k_y, metric, frac=frac, pt_tol=tolerance/2, fn_tol=1e-6)
     dist_xy = metric.length(k_x, k_y)
-    dist_xm = metric.length(k_x, mid)
-    dist_my = metric.length(mid, k_y)
+    dist_xz = metric.length(k_x, k_z)
+    dist_zy = metric.length(k_z, k_y)
 
     print(F"{metric}: {converged}")
 
     assert converged == OptimResult.CONVERGED, \
-        f"Midpoint failed to converge using {metric}: {mid}"
-    assert metric.contains(mid, atol=tolerance), \
-        f"Midpoint failed contains() test using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xm + dist_my, atol=tolerance), \
-        f"Midpoint not along geodesic: d(x,y) is {dist_xy} but d(x,m)+d(m,y) is {dist_xm + dist_my}"
-    assert np.isclose(dist_xm, dist_my, atol=tolerance), \
-        f"Midpoint failed to split the total length into equal parts: d(x,m) is {dist_xm} but d(m,y) is {dist_my}"
+        f"point_along failed to converge at frac={frac:.4f} using {metric}: {k_z}"
+    assert metric.contains(k_z, atol=tolerance), \
+        f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
+    assert np.isclose(dist_xy, dist_xz + dist_zy, atol=tolerance), \
+        f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
+    assert np.isclose(dist_xz/dist_xy, frac, atol=tolerance), \
+        f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
 
-    ang = angle(k_x, mid, k_y, metric).item()
+    ang = angle(k_x, k_z, k_y, metric).item()
     assert np.abs(ang - np.pi) < tolerance, \
         f"Angle through midpoint using {metric} should be pi but is {ang}"
 
