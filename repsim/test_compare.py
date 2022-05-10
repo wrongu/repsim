@@ -1,13 +1,16 @@
 import torch
+from repsim import pairwise
 from repsim.kernels import Linear, Laplace, SquaredExponential
-from repsim import compare, Stress, AngularCKA, AffineInvariantRiemannian
+from repsim import compare, Stress, AngularCKA, AffineInvariantRiemannian, CompareType
 import pytest
+
 
 
 def test_compare_random_data():
     x, y = torch.randn(10, 4), torch.randn(10, 3)
     methods = [
         "stress",
+        "scale_invariant_stress",
         "angular_cka",
         "riemannian",
     ]
@@ -46,3 +49,24 @@ def test_riemmannian_rank_deficient():
     # (Note that in @test_compare_random_data above, specifying method="riemannian" defaults to a regularized version)
     with pytest.raises(ValueError):
         compare(x, y, method=unregularized, kernel_x=Linear(), kernel_y=Linear())
+
+
+def test_scale_invariance():
+    x, y = torch.randn(10, 4), torch.randn(10, 3)
+    d_x, d_y = pairwise.compare(x, type=CompareType.DISTANCE), pairwise.compare(y, type=CompareType.DISTANCE)
+
+    base_distance = compare(d_x, d_y, method="scale_invariant_stress")
+    scale_x_distance = compare(d_x*2, d_y, method="scale_invariant_stress")
+    scale_y_distance = compare(d_x, d_y/2, method="scale_invariant_stress")
+
+    assert torch.isclose(base_distance, scale_x_distance), "Failed scale invariance"
+    assert torch.isclose(base_distance, scale_y_distance), "Failed scale invariance"
+    assert torch.isclose(scale_x_distance, scale_y_distance), "Failed scale invariance"
+
+    base_distance = compare(d_x, d_y, method="stress")
+    scale_x_distance = compare(d_x*2, d_y, method="stress")
+    scale_y_distance = compare(d_x, d_y/2, method="stress")
+
+    assert not torch.isclose(base_distance, scale_x_distance), "Original stress should not be scale invariant"
+    assert not torch.isclose(base_distance, scale_y_distance), "Original stress should not be scale invariant"
+    assert not torch.isclose(scale_x_distance, scale_y_distance), "Original stress should not be scale invariant"

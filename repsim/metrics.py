@@ -77,6 +77,24 @@ class Stress(RepresentationMetricSpace, DistMatrix):
         return torch.sqrt(torch.mean(diff_in_dist**2))
 
 
+class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):
+    """Like 'Stress', but applies an isotropic rescaling operation on all distances first"""
+
+    @property
+    def metric_type(self) -> MetricType:
+        return MetricType.LENGTH
+
+    @property
+    def compare_type(self) -> CompareType:
+        return CompareType.DISTANCE
+
+    def length(self, rdm_x: Point, rdm_y: Point) -> Scalar:
+        upper_x, upper_y = upper_triangle(rdm_x), upper_triangle(rdm_y)
+        # Rescale both x and y by dividing each by their respective mean distances
+        diff_in_dist = upper_x / torch.mean(upper_x) - upper_y / torch.mean(upper_y)
+        return torch.sqrt(torch.mean(diff_in_dist**2))
+
+
 class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
     """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 

@@ -3,6 +3,7 @@ from repsim.util import CorrType, CompareType, MetricType
 from repsim.metrics import (
     RepresentationMetricSpace,
     Stress,
+    ScaleInvariantStress,
     AngularCKA,
     AffineInvariantRiemannian,
 )
@@ -17,6 +18,7 @@ def compare(
 ) -> torch.Tensor:
     metric_lookup = {
         "stress": Stress,
+        "scale_invariant_stress": ScaleInvariantStress,
         "angular_cka": AngularCKA,
         "riemannian": AffineInvariantRiemannian,
     }
@@ -33,5 +35,5 @@ def compare(
     return method.length(method.to_rdm(x), method.to_rdm(y))
 
 
-__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA",
+__all__ = ["compare", "RepresentationMetricSpace", "Stress", "ScaleInvariantStress", "AngularCKA",
            "AffineInvariantRiemannian", "CorrType", "CompareType", "MetricType"]
