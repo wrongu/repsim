@@ -1,5 +1,5 @@
 import torch
-from repsim.util import CorrType
+from repsim.util import CorrType, CompareType, MetricType
 from repsim.metrics import (
     RepresentationMetricSpace,
     Stress,
@@ -33,4 +33,5 @@ def compare(
     return method.length(method.to_rdm(x), method.to_rdm(y))
 
 
-__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA", "AffineInvariantRiemannian"]
+__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA",
+           "AffineInvariantRiemannian", "CorrType", "CompareType", "MetricType"]

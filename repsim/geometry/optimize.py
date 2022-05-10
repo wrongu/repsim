@@ -24,9 +24,9 @@ def minimize(fun: Callable[[Point], Scalar],
     def fn_wrapper(x):
         return fun(x), torch.autograd.functional.jacobian(fun, x)
 
-    itr, step_size, pt = 0, init_step_size, init.clone()
+    step_size, pt = init_step_size, init.clone()
     fval, grad = fn_wrapper(pt)
-    while itr < max_iter:
+    for itr in range(max_iter):
         # Update by gradient descent + line search
         step_direction = -grad
         new_pt = space.project(pt.detach() + step_size * step_direction)
@@ -44,15 +44,15 @@ def minimize(fun: Callable[[Point], Scalar],
         condition_ii = -(step_direction*new_grad).sum() <= -wolfe_c2 * sq_step_size
         if condition_i and condition_ii:
             # Both conditions met! Update pt and loop.
-            pt, fval, grad, itr = new_pt.detach().clone(), new_fval, new_grad, itr+1
+            pt, fval, grad = new_pt.detach().clone(), new_fval, new_grad
         elif condition_i and not condition_ii:
-            # Step size is too small - adjust and loop, leaving pt, fval, itr, and grad unchanged
+            # Step size is too small - adjust and loop, leaving pt, fval, and grad unchanged
             step_size *= 1.1
         elif condition_ii and not condition_i:
-            # Step size is too big - adjust and loop, leaving pt, fval, itr, and grad unchanged
+            # Step size is too big - adjust and loop, leaving pt, fval, and grad unchanged
             step_size *= 0.8
         else:
             return pt.detach(), OptimResult.CONDITIONS_VIOLATED
 
-    # Max iterations reached – return final value of 'pt' along with converged=True
+    # Max iterations reached – return final value of 'pt' with flag indicating max steps reached
     return pt.detach(), OptimResult.MAX_STEPS_REACHED

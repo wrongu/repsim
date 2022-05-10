@@ -11,7 +11,7 @@ def test_geodesic_stress():
     _test_geodesic_helper(x, y, Stress(n=5))
 
 
-def test_geodesic_shape():
+def test_geodesic_cka():
     x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
     _test_geodesic_helper(x, y, AngularCKA(n=5))
 
@@ -53,22 +53,22 @@ def _test_geodesic_helper(x, y, metric):
         f"Angle through midpoint using {metric} should be pi but is {ang}"
 
 
-def test_project_stress():
+def test_projection_stress():
     x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_project_helper(x, y, z, Stress(n=5))
+    _test_projection_helper(x, y, z, Stress(n=5))
 
 
-def test_project_shape():
+def test_projection_shape():
     x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_project_helper(x, y, z, AngularCKA(n=5))
+    _test_projection_helper(x, y, z, AngularCKA(n=5))
 
 
-def test_project_riemann():
+def test_projection_riemann():
     x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_project_helper(x, y, z, AffineInvariantRiemannian(n=5))
+    _test_projection_helper(x, y, z, AffineInvariantRiemannian(n=5))
 
 
-def _test_project_helper(x, y, z, metric):
+def _test_projection_helper(x, y, z, metric):
     k_x, k_y, k_z = metric.to_rdm(x), metric.to_rdm(y), metric.to_rdm(z)
 
     tolerance = 1e-4
