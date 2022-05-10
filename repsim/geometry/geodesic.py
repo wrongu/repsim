@@ -78,6 +78,7 @@ def project_along(pt_fro: Point,
         # Dist to 'pt_to' is min. Recurse right.
         return project_along(mid, pt_fro, pt_a, space, tol=tol)
 
+
 def point_along(pt_a: Point,
                 pt_b: Point,
                 space: Manifold,
