@@ -75,8 +75,10 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         performing a basic arc slerp.
 
         """
-        a = torch.linalg.norm(center(pt_a), "fro")
-        b = torch.linalg.norm(center(pt_b), "fro")
+        a = center(pt_a)
+        a = a / torch.linalg.norm(a, "fro")
+        b = center(pt_b)
+        b = b / torch.linalg.norm(b, "fro")
         return slerp(a, b, frac)
 
 
@@ -177,7 +179,11 @@ def hsic(
     * note that if unbiased=True, it is possible to get small values below 0.
     """
     if k_x.size() != k_y.size():
-        raise ValueError("RDMs must have the same size, but got {} and {}".format(k_x.size(), k_y.size()))
+        raise ValueError(
+            "RDMs must have the same size, but got {} and {}".format(
+                k_x.size(), k_y.size()
+            )
+        )
     n = k_x.size()[0]
 
     if not centered:
