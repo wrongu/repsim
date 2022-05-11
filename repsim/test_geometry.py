@@ -7,26 +7,36 @@ from repsim.geometry.geodesic import point_along, project_along
 
 
 def test_geodesic_stress():
-    x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_geodesic_helper(x, y, Stress(n=5))
+    _test_geodesic_helper(5, 3, 4, Stress(n=5))
 
+
+def test_geodesic_stress_big():
+    _test_geodesic_helper(10000, 100, 100, Stress(n=10000))
 
 def test_geodesic_scale_invariant_stress():
-    x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_geodesic_helper(x, y, ScaleInvariantStress(n=5))
+    _test_geodesic_helper(5, 3, 4, ScaleInvariantStress(n=5))
 
+
+def test_geodesic_scale_invariant_stress_big():
+    _test_geodesic_helper(10000, 100, 100, ScaleInvariantStress(n=10000))
 
 def test_geodesic_cka():
-    x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_geodesic_helper(x, y, AngularCKA(n=5))
+    _test_geodesic_helper(5, 3, 4, AngularCKA(n=5))
 
+
+def test_geodesic_cka_big():
+    _test_geodesic_helper(10000, 100, 100, AngularCKA(n=10000))
 
 def test_geodesic_riemann():
-    x, y = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_geodesic_helper(x, y, AffineInvariantRiemannian(n=5))
+    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(n=5))
 
 
-def _test_geodesic_helper(x, y, metric):
+def test_geodesic_riemann_big():
+    _test_geodesic_helper(10000, 100, 100, AffineInvariantRiemannian(n=10000))
+
+
+def _test_geodesic_helper(m, nx, ny, metric):
+    x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
     k_x, k_y = metric.to_rdm(x), metric.to_rdm(y)
 
     assert metric.contains(k_x), \
@@ -59,26 +69,39 @@ def _test_geodesic_helper(x, y, metric):
 
 
 def test_projection_stress():
-    x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_projection_helper(x, y, z, Stress(n=5))
+    _test_projection_helper(5, 3, 4, 4, Stress(n=5))
+
+
+def test_projection_stress_big():
+    _test_projection_helper(10000, 100, 100, 100, Stress(n=10000))
 
 
 def test_projection_scale_invariant_stress():
-    x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_projection_helper(x, y, z, ScaleInvariantStress(n=5))
+    _test_projection_helper(5, 3, 4, 4, ScaleInvariantStress(n=5))
+
+
+def test_projection_scale_invariant_stress_big():
+    _test_projection_helper(10000, 100, 100, 100, ScaleInvariantStress(n=10000))
 
 
 def test_projection_cka():
-    x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_projection_helper(x, y, z, AngularCKA(n=5))
+    _test_projection_helper(5, 3, 4, 4, AngularCKA(n=5))
+
+
+def test_projection_cka_big():
+    _test_projection_helper(10000, 100, 100, 100, AngularCKA(n=10000))
 
 
 def test_projection_riemann():
-    x, y, z = torch.randn(5, 3, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64), torch.randn(5, 4, dtype=torch.float64)
-    _test_projection_helper(x, y, z, AffineInvariantRiemannian(n=5))
+    _test_projection_helper(5, 3, 4, 4, AffineInvariantRiemannian(n=5))
 
 
-def _test_projection_helper(x, y, z, metric):
+def test_projection_riemann_big():
+    _test_projection_helper(10000, 100, 100, 100, AffineInvariantRiemannian(n=10000))
+
+
+def _test_projection_helper(m, nx, ny, nz, metric):
+    x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
     k_x, k_y, k_z = metric.to_rdm(x), metric.to_rdm(y), metric.to_rdm(z)
 
     tolerance = 1e-4
