@@ -92,6 +92,9 @@ def point_along(pt_a: Point,
     if frac < 0. or frac > 1.:
         raise ValueError(f"'frac' must be in [0, 1] but is {frac}")
 
+    if space._has_implemented_closed_form_geodesic():
+        return space.geodesic_from(pt_a, pt_b, frac)
+
     # Three cases where we can just break early without optimizing
     if frac == 0.:
         return pt_a, OptimResult.CONVERGED
@@ -101,7 +104,7 @@ def point_along(pt_a: Point,
         return space.project((pt_a+pt_b)/2), OptimResult.CONVERGED
 
     # For reference, we know we're on the geodesic when dist_ap + dist_pb = dist_ab
-    dist_ab = space.length(pt_a, pt_b)
+    # dist_ab = space.length(pt_a, pt_b)
 
     # Default initial guess to projection of euclidean interpolated point
     pt = space.project(guess) if guess is not None else space.project((1-frac)*pt_a + frac*pt_b)

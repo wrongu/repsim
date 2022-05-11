@@ -60,6 +60,14 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
         return torch.arccos(torch.clip(cka(rdm_x, rdm_y), -1.0, 1.0))
 
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        raise NotImplementedError(
+            f"{self} does not have an implemented closed-form geodesic. (Check {self}._has_implemented_closed_form_geodesic())"
+        )
+
 
 class Stress(RepresentationMetricSpace, DistMatrix):
     """Difference-in-pairwise-distance, AKA 'stress' from the MDS literature."""
