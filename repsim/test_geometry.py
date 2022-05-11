@@ -2,37 +2,49 @@ import torch
 import numpy as np
 from repsim import Stress, ScaleInvariantStress, AngularCKA, AffineInvariantRiemannian
 from repsim.geometry.optimize import OptimResult
-from repsim.geometry.trig import angle
+from repsim.geometry.trig import angle, slerp
 from repsim.geometry.geodesic import point_along, project_along
 
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+BIG_M = 10000 if torch.cuda.is_available() else 500
 
 def test_geodesic_stress():
     _test_geodesic_helper(5, 3, 4, Stress(n=5))
 
 
 def test_geodesic_stress_big():
-    _test_geodesic_helper(10000, 100, 100, Stress(n=10000))
+    _test_geodesic_helper(BIG_M, 100, 100, Stress(n=BIG_M))
 
 def test_geodesic_scale_invariant_stress():
     _test_geodesic_helper(5, 3, 4, ScaleInvariantStress(n=5))
 
 
 def test_geodesic_scale_invariant_stress_big():
-    _test_geodesic_helper(10000, 100, 100, ScaleInvariantStress(n=10000))
+    _test_geodesic_helper(BIG_M, 100, 100, ScaleInvariantStress(n=BIG_M))
 
 def test_geodesic_cka():
     _test_geodesic_helper(5, 3, 4, AngularCKA(n=5))
 
 
 def test_geodesic_cka_big():
-    _test_geodesic_helper(10000, 100, 100, AngularCKA(n=10000))
+    _test_geodesic_helper(BIG_M, 100, 100, AngularCKA(n=BIG_M))
 
 def test_geodesic_riemann():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(n=5))
 
 
 def test_geodesic_riemann_big():
-    _test_geodesic_helper(10000, 100, 100, AffineInvariantRiemannian(n=10000))
+    _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(n=BIG_M))
+
+def test_slerp():
+    # Tests angular slerping:
+    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 0.5).allclose(torch.tensor([0, 0, 1]))
+    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 0).allclose(torch.tensor([0, 0, 1]))
+    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 1).allclose(torch.tensor([0, 0, 1]))
+
+    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 2]), 1).allclose(torch.tensor([0, 0, 2]))
+    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 2]), 0.5).allclose(torch.tensor([0, 0, 1.5]))
 
 
 def _test_geodesic_helper(m, nx, ny, metric):
@@ -73,7 +85,7 @@ def test_projection_stress():
 
 
 def test_projection_stress_big():
-    _test_projection_helper(10000, 100, 100, 100, Stress(n=10000))
+    _test_projection_helper(BIG_M, 100, 100, 100, Stress(n=BIG_M))
 
 
 def test_projection_scale_invariant_stress():
@@ -81,7 +93,7 @@ def test_projection_scale_invariant_stress():
 
 
 def test_projection_scale_invariant_stress_big():
-    _test_projection_helper(10000, 100, 100, 100, ScaleInvariantStress(n=10000))
+    _test_projection_helper(BIG_M, 100, 100, 100, ScaleInvariantStress(n=BIG_M))
 
 
 def test_projection_cka():
@@ -89,7 +101,7 @@ def test_projection_cka():
 
 
 def test_projection_cka_big():
-    _test_projection_helper(10000, 100, 100, 100, AngularCKA(n=10000))
+    _test_projection_helper(BIG_M, 100, 100, 100, AngularCKA(n=BIG_M))
 
 
 def test_projection_riemann():
@@ -97,7 +109,7 @@ def test_projection_riemann():
 
 
 def test_projection_riemann_big():
-    _test_projection_helper(10000, 100, 100, 100, AffineInvariantRiemannian(n=10000))
+    _test_projection_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(n=BIG_M))
 
 
 def _test_projection_helper(m, nx, ny, nz, metric):

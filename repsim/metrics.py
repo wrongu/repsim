@@ -1,4 +1,5 @@
 import torch
+from repsim.geometry.trig import slerp
 from repsim.kernels import center
 from repsim.geometry.manifold import SymmetricMatrix, SPDMatrix, DistMatrix, Point, Scalar
 from repsim import pairwise
@@ -64,8 +65,17 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         return True
 
     def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
-        raise NotImplementedError(
-            f"{self} does not have an implemented closed-form geodesic. (Check {self}._has_implemented_closed_form_geodesic())"
+        """
+        Compute the geodesic between two points pt_a and pt_b.
+
+        We do this by projecting both onto our hypersphere, and then
+        performing a basic arc slerp.
+
+        """
+        a = torch.linalg.norm(center(pt_a), 'fro')
+        b = torch.linalg.norm(center(pt_b), 'fro')
+        return self.project(
+            slerp(pt_a, pt_b, frac)
         )
 
 

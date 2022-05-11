@@ -92,9 +92,6 @@ def point_along(pt_a: Point,
     if frac < 0. or frac > 1.:
         raise ValueError(f"'frac' must be in [0, 1] but is {frac}")
 
-    if space._has_implemented_closed_form_geodesic():
-        return space.geodesic_from(pt_a, pt_b, frac)
-
     # Three cases where we can just break early without optimizing
     if frac == 0.:
         return pt_a, OptimResult.CONVERGED
@@ -102,6 +99,11 @@ def point_along(pt_a: Point,
         return pt_b, OptimResult.CONVERGED
     elif torch.allclose(pt_a, pt_b, atol=kwargs.get('pt_tol', 1e-6)):
         return space.project((pt_a+pt_b)/2), OptimResult.CONVERGED
+    
+    # We can also use a closed-form geodesic computation from the space itself
+    # if one is available.
+    if space._has_implemented_closed_form_geodesic():
+        return space.geodesic_from(pt_a, pt_b, frac)
 
     # For reference, we know we're on the geodesic when dist_ap + dist_pb = dist_ab
     # dist_ab = space.length(pt_a, pt_b)
