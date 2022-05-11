@@ -8,6 +8,7 @@ class OptimResult(enum.Enum):
     CONVERGED = 0
     MAX_STEPS_REACHED = 1
     CONDITIONS_VIOLATED = 2
+    NO_OPT_NEEDED = 0
 
 
 def minimize(fun: Callable[[Point], Scalar],
@@ -29,7 +30,7 @@ def minimize(fun: Callable[[Point], Scalar],
     fval, grad = fn_wrapper(pt)
     for itr in range(max_iter):
         # Update by gradient descent + line search
-        step_direction = -grad
+        step_direction = -1 * grad
         new_pt = space.project(pt.detach() + step_size * step_direction)
         new_fval, new_grad = fn_wrapper(new_pt)
 

@@ -1,7 +1,13 @@
 import torch
 from repsim.geometry.trig import slerp
 from repsim.kernels import center
-from repsim.geometry.manifold import SymmetricMatrix, SPDMatrix, DistMatrix, Point, Scalar
+from repsim.geometry.manifold import (
+    SymmetricMatrix,
+    SPDMatrix,
+    DistMatrix,
+    Point,
+    Scalar,
+)
 from repsim import pairwise
 from repsim.util import upper_triangle
 from repsim.util import MetricType, CompareType
@@ -15,6 +21,7 @@ class RepresentationMetricSpace(SymmetricMatrix):
     """Base mixin class for all representational similarity/representational distance comparisons. Subclasses will
     inherit from *both* RepresentationMetricSpace and *one of* SPDMatrix or DistMatrix.
     """
+
     def __init__(self, n: int, kernel=None):
         super(RepresentationMetricSpace, self).__init__(rows=n)
         self._kernel = kernel
@@ -33,11 +40,7 @@ class RepresentationMetricSpace(SymmetricMatrix):
         """
         return pairwise.compare(x, kernel=self._kernel, type=self.compare_type)
 
-    def representational_distance(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor
-    ) -> Scalar:
+    def representational_distance(self, x: torch.Tensor, y: torch.Tensor) -> Scalar:
         return self.length(self.to_rdm(x), self.to_rdm(y))
 
 
@@ -72,11 +75,9 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         performing a basic arc slerp.
 
         """
-        a = torch.linalg.norm(center(pt_a), 'fro')
-        b = torch.linalg.norm(center(pt_b), 'fro')
-        return self.project(
-            slerp(pt_a, pt_b, frac)
-        )
+        a = torch.linalg.norm(center(pt_a), "fro")
+        b = torch.linalg.norm(center(pt_b), "fro")
+        return slerp(a, b, frac)
 
 
 class Stress(RepresentationMetricSpace, DistMatrix):
@@ -127,7 +128,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
     """
 
     def __init__(self, **kwargs):
-        shrinkage = kwargs.pop('shrinkage', 0.1)
+        shrinkage = kwargs.pop("shrinkage", 0.1)
         super().__init__(**kwargs)
         if shrinkage < 0.0 or shrinkage > 1.0:
             raise ValueError(
@@ -149,8 +150,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
         off_diag_n = 1.0 - torch.eye(n, device=rdm_x.device, dtype=rdm_x.dtype)
         rdm_x = rdm_x - self._shrink * off_diag_n * rdm_x
         rdm_y = rdm_y - self._shrink * off_diag_n * rdm_y
-        if torch.linalg.matrix_rank(rdm_x) < self.shape[0] or torch.linalg.matrix_rank(rdm_y) < self.shape[0]:
-            raise ValueError(f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!")
+        if (
+            torch.linalg.matrix_rank(rdm_x) < self.shape[0]
+            or torch.linalg.matrix_rank(rdm_y) < self.shape[0]
+        ):
+            raise ValueError(
+                f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!"
+            )
         # Compute rdm_x^{-1} @ rdm_y
         x_inv_y = torch.linalg.solve(rdm_x, rdm_y)
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
@@ -171,7 +177,7 @@ def hsic(
     * note that if unbiased=True, it is possible to get small values below 0.
     """
     if k_x.size() != k_y.size():
-        raise ValueError("RDMs must have the same size!")
+        raise ValueError("RDMs must have the same size, but got {} and {}".format(k_x.size(), k_y.size()))
     n = k_x.size()[0]
 
     if not centered:

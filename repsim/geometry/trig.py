@@ -25,10 +25,16 @@ def slerp(
     """
     assert frac >= 0.0 and frac <= 1.0, "frac must be between 0 and 1"
 
-    omega = torch.acos(torch.clamp(torch.matmul(pt_a, pt_b), -1.0, 1.0))
-    pt_a_frac = torch.sin((1 - frac) * omega) / torch.sin(omega) * pt_a
-    pt_b_frac = torch.sin(frac * omega) / torch.sin(omega) * pt_b
-    return pt_a_frac + pt_b_frac
+    # ab = torch.matmul(pt_a, pt_b)
+    # dot of the ravels:
+    ab = torch.dot(pt_a.view(-1), pt_b.view(-1))
+    # omega = torch.acos(torch.clamp(ab, -1.0, 1.0))
+    omega = torch.acos(ab)
+    print("F", pt_a.view(-1), pt_b.view(-1), ab, omega)
+    pt_a_frac = pt_a * torch.sin((1 - frac) * omega) / torch.sin(omega)
+    pt_b_frac = pt_b * torch.sin(frac * omega) / torch.sin(omega)
+    n = (pt_a_frac + pt_b_frac).reshape(pt_a.shape)
+    return n
 
 
 def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> Scalar:
