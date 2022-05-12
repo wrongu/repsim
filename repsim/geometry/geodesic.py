@@ -37,7 +37,8 @@ def project_along(pt_fro: Point,
                   pt_to: Point,
                   pt_a: Point,
                   space: Manifold,
-                  tol=1e-6) -> Tuple[Point, OptimResult]:
+                  tol=1e-6,
+                  max_recurse=1000) -> Tuple[Point, OptimResult]:
     """Find 'projection' of pt_a onto a geodesic that spans [pt_fro, pt_to]
 
     :param pt_fro: start point of the geodesic
@@ -61,6 +62,10 @@ def project_along(pt_fro: Point,
     if status != OptimResult.CONVERGED:
         warnings.warn("midpoint() failed to converge. result of project_along() may be inaccurate")
 
+    # Break-early case 3: we've recursed and subdivided too many times.
+    if max_recurse == 0:
+        return mid, OptimResult.MAX_STEPS_REACHED
+
     # Distance from a to mid
     dist_a_mid = space.length(mid, pt_a)
 
@@ -68,15 +73,15 @@ def project_along(pt_fro: Point,
     if dist_a_mid < min(dist_a_fro, dist_a_to):
         # Midpoint is min.. recurse to whichever side is closer to pt_a
         if dist_a_fro < dist_a_to:
-            return project_along(pt_fro, mid, pt_a, space, tol=tol)
+            return project_along(pt_fro, mid, pt_a, space, tol=tol, max_recurse=max_recurse-1)
         else:
-            return project_along(mid, pt_to, pt_a, space, tol=tol)
+            return project_along(mid, pt_to, pt_a, space, tol=tol, max_recurse=max_recurse-1)
     elif dist_a_fro < dist_a_to:
         # Dist to 'pt_fro' is min. Recurse left.
-        return project_along(pt_fro, mid, pt_a, space, tol=tol)
+        return project_along(pt_fro, mid, pt_a, space, tol=tol, max_recurse=max_recurse-1)
     else:
         # Dist to 'pt_to' is min. Recurse right.
-        return project_along(mid, pt_fro, pt_a, space, tol=tol)
+        return project_along(mid, pt_fro, pt_a, space, tol=tol, max_recurse=max_recurse-1)
 
 
 def point_along(pt_a: Point,
