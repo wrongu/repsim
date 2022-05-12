@@ -28,21 +28,32 @@ def slerp(
     """
     assert 0.0 <= frac <= 1.0, "frac must be between 0 and 1"
 
+    def _norm(vec):
+        return vec / torch.sqrt(torch.sum(vec * vec))
+
     # Normalize a and b to unit vectors
-    a = pt_a / torch.sqrt(torch.sum(pt_a * pt_a))
-    b = pt_b / torch.sqrt(torch.sum(pt_b * pt_b))
+    a, b = _norm(pt_a), _norm(pt_b)
 
     # Check cases where we can break early (and doing so avoids things like divide-by-zero later!)
     if frac == 0.0:
         return a
     elif frac == 1.0:
         return b
-    elif torch.allclose(a, b):
-        return (a + b) / 2
+
+    # Use dot product between (normed) a and b to test for colinearity
+    dot_ab = torch.sum(a * b)
+
+    # Check some more break-early cases based on dot product result.
+    eps = 1e-6
+    if dot_ab > 1.0 - eps:
+        # dot(a,b) is effectively 1, so A and B are effectively the same vector. Do Euclidean interpolation.
+        return _norm(a*(1-frac) + b*frac)
+    elif dot_ab < -1 + eps:
+        # dot(a,b) is effectively 1, so A and B are effectively at opposite poles. There are infinitely many geodesics.
+        raise ValueError("A and B are andipodal - cannot SLERP")
 
     # Get 'omega' - the angle between a and b
-    ab = torch.sum(a*b)
-    omega = torch.acos(torch.clip(ab, -1.0, 1.0))
+    omega = torch.acos(torch.clip(dot_ab, -1.0, 1.0))
     # Do interpolation using the SLERP formula
     a_frac = a * torch.sin((1 - frac) * omega) / torch.sin(omega)
     b_frac = b * torch.sin(frac * omega) / torch.sin(omega)
