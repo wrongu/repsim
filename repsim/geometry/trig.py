@@ -35,20 +35,6 @@ def slerp(
     return n
 
 
-# def slerp(start, end, val):
-#     a = start / torch.norm(start)
-#     b = end / torch.norm(end)
-#     a = torch.tensor([a])
-#     b = torch.tensor([b])
-#     omega = torch.acos(torch.clamp(torch.matmul(a, b.t()), -1, 1))
-#     so = torch.sin(omega)
-#     if so == 0:
-#         return (1.0 - val) * start + val * end  # L'Hopital's rule / LERP
-#     return (
-#         torch.sin((1.0 - val) * omega) / so * start + torch.sin(val * omega) / so * end
-#     )
-
-
 def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> Scalar:
     """
     Angle B of triangle ABC, based on incident angle of geodesics AB and CB.

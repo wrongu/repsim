@@ -67,7 +67,7 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
     def _has_implemented_closed_form_geodesic(self) -> bool:
         return True
 
-    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         """
         Compute the geodesic between two points pt_a and pt_b.
 
@@ -79,7 +79,7 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         a = a / torch.linalg.norm(a, "fro")
         b = center(pt_b)
         b = b / torch.linalg.norm(b, "fro")
-        return slerp(a, b, frac)
+        return self.project(slerp(a, b, frac))
 
 
 class Stress(RepresentationMetricSpace, DistMatrix):
@@ -96,6 +96,16 @@ class Stress(RepresentationMetricSpace, DistMatrix):
     def length(self, rdm_x: Point, rdm_y: Point) -> Scalar:
         diff_in_dist = upper_triangle(rdm_x - rdm_y)
         return torch.sqrt(torch.mean(diff_in_dist**2))
+
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        """
+        Compute the geodesic between two points pt_a and pt_b.
+
+        """
+        return self.project((1 - frac) * pt_a + frac * pt_b)
 
 
 class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):

@@ -58,7 +58,7 @@ def _test_geodesic_helper(m, nx, ny, metric):
 
     # Note: we'll insist on computing the midpoint with tolerance/10, then do later checks up to tolerance. This just
     # gives a slight margin.
-    frac, tolerance = np.random.rand(1)[0], 1.5e-3
+    frac, tolerance = np.random.rand(1)[0], 1e-2
     vals = point_along(k_x, k_y, metric, frac=frac, pt_tol=tolerance/10, fn_tol=1e-6)
     k_z, converged = vals
     dist_xy = metric.length(k_x, k_y)
