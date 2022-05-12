@@ -43,13 +43,35 @@ def test_geodesic_riemann_big():
 
 
 def test_slerp():
-    # Tests angular slerping:
-    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 0.5).allclose(torch.tensor([0, 0, 1]))
-    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 0).allclose(torch.tensor([0, 0, 1]))
-    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 1]), 1).allclose(torch.tensor([0, 0, 1]))
+    vec001 = torch.tensor([0, 0, 1], dtype=torch.float32)
+    vec100 = torch.tensor([1, 0, 0], dtype=torch.float32)
+    vec101 = torch.tensor([1, 0, 1], dtype=torch.float32) * np.sqrt(2) / 2
 
-    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 2]), 1).allclose(torch.tensor([0, 0, 2]))
-    assert slerp(torch.tensor([0, 0, 1]), torch.tensor([0, 0, 2]), 0.5).allclose(torch.tensor([0, 0, 1.5]))
+    # Test some edge cases - where frac is 0, 1, or two vecs are identical
+    assert slerp(vec001, vec001, 0.5).allclose(vec001)
+    assert slerp(vec001, 2*vec001, 0.5).allclose(vec001)
+    assert slerp(vec001, vec100, 0).allclose(vec001)
+    assert slerp(vec001, vec100, 1).allclose(vec100)
+
+    # Do an actual interpolation
+    assert slerp(vec001, vec100, 0.5).allclose(vec101)
+    # Test that SLERP normalizes things for us
+    assert slerp(4*vec001, 2*vec100, 0.5).allclose(vec101)
+
+    # Do a random 2D interpolation not involving orthogonal vectors
+    vec_a, vec_b = torch.randn(2), torch.randn(2)
+    norm_a, norm_b = vec_a / torch.linalg.norm(vec_a), vec_b / torch.linalg.norm(vec_b)
+    total_angle = torch.arccos(torch.clip(torch.sum(norm_a*norm_b), -1., 1.))
+    frac = np.random.rand()
+    rotation_amount = frac * total_angle
+    c, s = torch.cos(rotation_amount), torch.sin(rotation_amount)
+    rotation_matrix = torch.tensor([[c, -s], [s, c]])
+    # Rotate vec_a towards vec_b... try both CW and CCW and take whichever worked
+    vec_c_clockwise = rotation_matrix @ norm_a
+    vec_c_counterclockwise = rotation_matrix.T @ norm_a
+    assert slerp(vec_a, vec_b, frac).allclose(vec_c_clockwise) or \
+        slerp(vec_a, vec_b, frac).allclose(vec_c_counterclockwise)
+
 
 
 def _test_geodesic_helper(m, nx, ny, metric):

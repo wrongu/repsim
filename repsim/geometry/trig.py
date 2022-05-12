@@ -31,11 +31,13 @@ def slerp(
     a = pt_a / torch.sqrt(torch.sum(pt_a * pt_a))
     b = pt_b / torch.sqrt(torch.sum(pt_b * pt_b))
 
-    # Check cases where we can break early
+    # Check cases where we can break early (and doing so avoids things like divide-by-zero later!)
     if frac == 0.0:
         return a
     elif frac == 1.0:
         return b
+    elif torch.allclose(a, b):
+        return (a + b) / 2
 
     # Get 'omega' - the angle between a and b
     ab = torch.sum(a*b)
