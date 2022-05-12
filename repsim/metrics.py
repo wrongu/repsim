@@ -1,6 +1,13 @@
 import torch
+from repsim.geometry.trig import slerp
 from repsim.kernels import center
-from repsim.geometry.manifold import SymmetricMatrix, SPDMatrix, DistMatrix, Point, Scalar
+from repsim.geometry.manifold import (
+    SymmetricMatrix,
+    SPDMatrix,
+    DistMatrix,
+    Point,
+    Scalar,
+)
 from repsim import pairwise
 from repsim.util import upper_triangle
 from repsim.util import MetricType, CompareType
@@ -14,6 +21,7 @@ class RepresentationMetricSpace(SymmetricMatrix):
     """Base mixin class for all representational similarity/representational distance comparisons. Subclasses will
     inherit from *both* RepresentationMetricSpace and *one of* SPDMatrix or DistMatrix.
     """
+
     def __init__(self, n: int, kernel=None):
         super(RepresentationMetricSpace, self).__init__(rows=n)
         self._kernel = kernel
@@ -32,11 +40,7 @@ class RepresentationMetricSpace(SymmetricMatrix):
         """
         return pairwise.compare(x, kernel=self._kernel, type=self.compare_type)
 
-    def representational_distance(
-        self,
-        x: torch.Tensor,
-        y: torch.Tensor
-    ) -> Scalar:
+    def representational_distance(self, x: torch.Tensor, y: torch.Tensor) -> Scalar:
         return self.length(self.to_rdm(x), self.to_rdm(y))
 
 
@@ -60,6 +64,20 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         # Note: use clipping in case of numerical imprecision. arccos(1.00000000001) will give NaN!
         return torch.arccos(torch.clip(cka(rdm_x, rdm_y), -1.0, 1.0))
 
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
+        """
+        Compute the geodesic between two points pt_a and pt_b.
+
+        The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of centered RDMs.
+        """
+        # Apply centering to each RDM so that inner-products alone are HSIC
+        ctr_a, ctr_b = center(pt_a), center(pt_b)
+        # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a and ctr_b don't
+        return self.project(slerp(ctr_a, ctr_b, frac))
+
 
 class Stress(RepresentationMetricSpace, DistMatrix):
     """Difference-in-pairwise-distance, AKA 'stress' from the MDS literature."""
@@ -76,6 +94,15 @@ class Stress(RepresentationMetricSpace, DistMatrix):
         diff_in_dist = upper_triangle(rdm_x - rdm_y)
         return torch.sqrt(torch.mean(diff_in_dist**2))
 
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        """Compute the geodesic between two points pt_a and pt_b.
+        """
+        # Stress geodesics are Euclidean in the space of RDMs
+        return self.project((1 - frac) * pt_a + frac * pt_b)
+
 
 class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):
     """Like 'Stress', but applies an isotropic rescaling operation on all distances first"""
@@ -88,11 +115,28 @@ class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):
     def compare_type(self) -> CompareType:
         return CompareType.DISTANCE
 
+    @staticmethod
+    def _rescale(rdm_x: Point):
+        """Rescale the given RDM so that scale-invariant Stress on rdm_x becomes plain old Stress on the rescaled RDMs.
+        """
+        upper_x = upper_triangle(rdm_x)
+        return rdm_x / torch.mean(upper_x)
+
     def length(self, rdm_x: Point, rdm_y: Point) -> Scalar:
-        upper_x, upper_y = upper_triangle(rdm_x), upper_triangle(rdm_y)
-        # Rescale both x and y by dividing each by their respective mean distances
-        diff_in_dist = upper_x / torch.mean(upper_x) - upper_y / torch.mean(upper_y)
+        rescaled_x, rescaled_y = ScaleInvariantStress._rescale(rdm_x), ScaleInvariantStress._rescale(rdm_y)
+        # The following is identical to Stress.length on the rescaled RDMs
+        diff_in_dist = upper_triangle(rescaled_x - rescaled_y)
         return torch.sqrt(torch.mean(diff_in_dist**2))
+
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        """Compute the geodesic between two points pt_a and pt_b.
+        """
+        # Euclidean interpolation between rescaled RDMs
+        rescaled_a, rescaled_b = ScaleInvariantStress._rescale(pt_a), ScaleInvariantStress._rescale(pt_b)
+        return self.project((1 - frac) * rescaled_a + frac * rescaled_b)
 
 
 class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
@@ -109,7 +153,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
     """
 
     def __init__(self, **kwargs):
-        shrinkage = kwargs.pop('shrinkage', 0.1)
+        shrinkage = kwargs.pop("shrinkage", 0.1)
         super().__init__(**kwargs)
         if shrinkage < 0.0 or shrinkage > 1.0:
             raise ValueError(
@@ -131,8 +175,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
         off_diag_n = 1.0 - torch.eye(n, device=rdm_x.device, dtype=rdm_x.dtype)
         rdm_x = rdm_x - self._shrink * off_diag_n * rdm_x
         rdm_y = rdm_y - self._shrink * off_diag_n * rdm_y
-        if torch.linalg.matrix_rank(rdm_x) < self.shape[0] or torch.linalg.matrix_rank(rdm_y) < self.shape[0]:
-            raise ValueError(f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!")
+        if (
+            torch.linalg.matrix_rank(rdm_x) < self.shape[0]
+            or torch.linalg.matrix_rank(rdm_y) < self.shape[0]
+        ):
+            raise ValueError(
+                f"Cannot invert rank-deficient RDMs – set shrink > 0 and/or use a kernel!"
+            )
         # Compute rdm_x^{-1} @ rdm_y
         x_inv_y = torch.linalg.solve(rdm_x, rdm_y)
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
@@ -153,7 +202,11 @@ def hsic(
     * note that if unbiased=True, it is possible to get small values below 0.
     """
     if k_x.size() != k_y.size():
-        raise ValueError("RDMs must have the same size!")
+        raise ValueError(
+            "RDMs must have the same size, but got {} and {}".format(
+                k_x.size(), k_y.size()
+            )
+        )
     n = k_x.size()[0]
 
     if not centered:

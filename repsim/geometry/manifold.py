@@ -48,6 +48,14 @@ class Manifold(object):
 
     def _length(self, pt_a: Point, pt_b: Point) -> Scalar:
         raise NotImplementedError("_length() must be implemented by a subclass")
+    
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        """Check if there is an implementation of a closed-form geodesic for this space.
+        """
+        return False
+    
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        raise NotImplementedError(f"{self} does not have an implemented closed-form geodesic. (Check {self}._has_implemented_closed_form_geodesic())")
 
 
 class HyperSphere(Manifold):
