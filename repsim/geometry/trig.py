@@ -14,6 +14,8 @@ def slerp(
 
     https://en.m.wikipedia.org/wiki/Slerp
 
+    The interpolated point will always have unit norm.
+
     Arguments:
         pt_a (Point): First point.
         pt_b (Point): Second point.
@@ -23,7 +25,7 @@ def slerp(
         Point: The slerp between pt_a and pt_b.
 
     """
-    assert frac >= 0.0 and frac <= 1.0, "frac must be between 0 and 1"
+    assert 0.0 <= frac <= 1.0, "frac must be between 0 and 1"
 
     a = pt_a
     b = pt_b

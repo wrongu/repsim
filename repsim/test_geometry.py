@@ -9,12 +9,14 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 BIG_M = 10000 if torch.cuda.is_available() else 500
 
+
 def test_geodesic_stress():
     _test_geodesic_helper(5, 3, 4, Stress(n=5))
 
 
 def test_geodesic_stress_big():
     _test_geodesic_helper(BIG_M, 100, 100, Stress(n=BIG_M))
+
 
 def test_geodesic_scale_invariant_stress():
     _test_geodesic_helper(5, 3, 4, ScaleInvariantStress(n=5))
@@ -23,6 +25,7 @@ def test_geodesic_scale_invariant_stress():
 def test_geodesic_scale_invariant_stress_big():
     _test_geodesic_helper(BIG_M, 100, 100, ScaleInvariantStress(n=BIG_M))
 
+
 def test_geodesic_cka():
     _test_geodesic_helper(5, 3, 4, AngularCKA(n=5))
 
@@ -30,12 +33,14 @@ def test_geodesic_cka():
 def test_geodesic_cka_big():
     _test_geodesic_helper(BIG_M, 100, 100, AngularCKA(n=BIG_M))
 
+
 def test_geodesic_riemann():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(n=5))
 
 
 def test_geodesic_riemann_big():
     _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(n=BIG_M))
+
 
 def test_slerp():
     # Tests angular slerping:
@@ -67,8 +72,8 @@ def _test_geodesic_helper(m, nx, ny, metric):
 
     print(F"{metric}: {converged}")
 
-    # assert converged == OptimResult.CONVERGED, \
-    #     f"point_along failed to converge at frac={frac:.4f} using {metric}: {k_z}"
+    assert converged in [OptimResult.CONVERGED, OptimResult.NO_OPT_NEEDED], \
+        f"point_along failed to converge at frac={frac:.4f} using {metric}: {k_z}"
     assert metric.contains(k_z, atol=tolerance), \
         f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
     assert np.isclose(dist_xy, dist_xz + dist_zy, atol=tolerance), \

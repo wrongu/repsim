@@ -71,9 +71,7 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
         """
         Compute the geodesic between two points pt_a and pt_b.
 
-        We do this by projecting both onto our hypersphere, and then
-        performing a basic arc slerp.
-
+        The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of centered RDMs.
         """
         a = center(pt_a)
         a = a / torch.linalg.norm(a, "fro")
@@ -101,10 +99,9 @@ class Stress(RepresentationMetricSpace, DistMatrix):
         return True
 
     def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        """Compute the geodesic between two points pt_a and pt_b.
         """
-        Compute the geodesic between two points pt_a and pt_b.
-
-        """
+        # Stress geodesics are Euclidean in the space of RDMs
         return self.project((1 - frac) * pt_a + frac * pt_b)
 
 

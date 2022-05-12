@@ -50,9 +50,7 @@ class Manifold(object):
         raise NotImplementedError("_length() must be implemented by a subclass")
     
     def _has_implemented_closed_form_geodesic(self) -> bool:
-        """
-        Check if there is an implementation of a closed-form geodesic for
-        this space.
+        """Check if there is an implementation of a closed-form geodesic for this space.
         """
         return False
     

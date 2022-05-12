@@ -5,7 +5,6 @@ from repsim import compare, Stress, AngularCKA, AffineInvariantRiemannian, Compa
 import pytest
 
 
-
 def test_compare_random_data():
     x, y = torch.randn(10, 4), torch.randn(10, 3)
     methods = [
