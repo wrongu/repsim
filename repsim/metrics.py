@@ -115,11 +115,28 @@ class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):
     def compare_type(self) -> CompareType:
         return CompareType.DISTANCE
 
+    @staticmethod
+    def _rescale(rdm_x: Point):
+        """Rescale the given RDM so that scale-invariant Stress on rdm_x becomes plain old Stress on the rescaled RDMs.
+        """
+        upper_x = upper_triangle(rdm_x)
+        return rdm_x / torch.mean(upper_x)
+
     def length(self, rdm_x: Point, rdm_y: Point) -> Scalar:
-        upper_x, upper_y = upper_triangle(rdm_x), upper_triangle(rdm_y)
-        # Rescale both x and y by dividing each by their respective mean distances
-        diff_in_dist = upper_x / torch.mean(upper_x) - upper_y / torch.mean(upper_y)
+        rescaled_x, rescaled_y = ScaleInvariantStress._rescale(rdm_x), ScaleInvariantStress._rescale(rdm_y)
+        # The following is identical to Stress.length on the rescaled RDMs
+        diff_in_dist = upper_triangle(rescaled_x - rescaled_y)
         return torch.sqrt(torch.mean(diff_in_dist**2))
+
+    def _has_implemented_closed_form_geodesic(self) -> bool:
+        return True
+
+    def geodesic_from(self, pt_a: Point, pt_b: Point, frac: float = 0.5):
+        """Compute the geodesic between two points pt_a and pt_b.
+        """
+        # Euclidean interpolation between rescaled RDMs
+        rescaled_a, rescaled_b = ScaleInvariantStress._rescale(pt_a), ScaleInvariantStress._rescale(pt_b)
+        return self.project((1 - frac) * rescaled_a + frac * rescaled_b)
 
 
 class AffineInvariantRiemannian(RepresentationMetricSpace, SPDMatrix):
