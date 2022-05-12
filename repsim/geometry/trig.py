@@ -1,6 +1,7 @@
 import torch
 from repsim.geometry.manifold import Manifold, Point, Scalar
 from repsim.geometry.geodesic import point_along
+from repsim.geometry.optimize import OptimResult
 import warnings
 
 
@@ -54,9 +55,9 @@ def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> S
     If B is along the geodesic from A to C, then the angle is pi (180 degrees).
     If A=C, then the angle is zero.
     """
-    pt_ba, converged_ba = point_along(pt_b, pt_a, space, frac=0.02, **kwargs)
-    pt_bc, converged_bc = point_along(pt_b, pt_c, space, frac=0.02, **kwargs)
-    if not (converged_ba and converged_bc):
+    pt_ba, converged_ba = point_along(pt_b, pt_a, space, frac=0.01, **kwargs)
+    pt_bc, converged_bc = point_along(pt_b, pt_c, space, frac=0.01, **kwargs)
+    if converged_ba != OptimResult.CONVERGED or converged_bc != OptimResult.CONVERGED:
         warnings.warn("point_along failed to converge; angle may be inaccurate")
     # Law of cosines using small local distances
     d_c, d_a, d_b = (
