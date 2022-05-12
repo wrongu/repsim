@@ -73,11 +73,10 @@ class AngularCKA(RepresentationMetricSpace, SPDMatrix):
 
         The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of centered RDMs.
         """
-        a = center(pt_a)
-        a = a / torch.linalg.norm(a, "fro")
-        b = center(pt_b)
-        b = b / torch.linalg.norm(b, "fro")
-        return self.project(slerp(a, b, frac))
+        # Apply centering to each RDM so that inner-products alone are HSIC
+        ctr_a, ctr_b = center(pt_a), center(pt_b)
+        # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a and ctr_b don't
+        return self.project(slerp(ctr_a, ctr_b, frac))
 
 
 class Stress(RepresentationMetricSpace, DistMatrix):

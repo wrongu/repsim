@@ -27,14 +27,23 @@ def slerp(
     """
     assert 0.0 <= frac <= 1.0, "frac must be between 0 and 1"
 
-    a = pt_a
-    b = pt_b
-    ab = torch.matmul(a, b)
-    omega = torch.acos(torch.clamp(ab, -1.0, 1.0))
+    # Normalize a and b to unit vectors
+    a = pt_a / torch.sqrt(torch.sum(pt_a * pt_a))
+    b = pt_b / torch.sqrt(torch.sum(pt_b * pt_b))
+
+    # Check cases where we can break early
+    if frac == 0.0:
+        return a
+    elif frac == 1.0:
+        return b
+
+    # Get 'omega' - the angle between a and b
+    ab = torch.sum(a*b)
+    omega = torch.acos(torch.clip(ab, -1.0, 1.0))
+    # Do interpolation using the SLERP formula
     a_frac = a * torch.sin((1 - frac) * omega) / torch.sin(omega)
     b_frac = b * torch.sin(frac * omega) / torch.sin(omega)
-    n = (a_frac + b_frac).reshape(a.shape)
-    return n
+    return (a_frac + b_frac).reshape(a.shape)
 
 
 def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> Scalar:
