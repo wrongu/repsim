@@ -38,7 +38,7 @@ def project_along(pt_fro: Point,
                   pt_a: Point,
                   space: Manifold,
                   tol=1e-6,
-                  max_recurse=1000) -> Tuple[Point, OptimResult]:
+                  max_recurse=20) -> Tuple[Point, OptimResult]:
     """Find 'projection' of pt_a onto a geodesic that spans [pt_fro, pt_to]
 
     :param pt_fro: start point of the geodesic
@@ -46,6 +46,7 @@ def project_along(pt_fro: Point,
     :param pt_a: point to be projected
     :param space: a Manifold
     :param tol: result will be within this tolerance, as measured by space.length
+    :param max_recurse: how many halvings is too many halvings? 0.5^20 gives a resolution of about 1 part per million
     :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
     from pt_a to pt_x is minimized
     """
@@ -131,4 +132,4 @@ def midpoint(pt_a: Point,
     return point_along(pt_a, pt_b, space, frac=0.5, **kwargs)
 
 
-__all__ = ["path_length", "subdivide_geodesic", "point_along", "midpoint"]
+__all__ = ["path_length", "subdivide_geodesic", "point_along", "midpoint", "project_along"]
