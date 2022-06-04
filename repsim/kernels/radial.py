@@ -20,6 +20,13 @@ class SquaredExponential(Kernel):
 
         return torch.exp(-pdist2(x, y) / sc**2)
 
+    def string_id(self):
+        if type(self._scale) is str:
+            scale_str = self._scale
+        else:
+            scale_str = f"{self._scale:.3f}"
+        return f"SqExp[{scale_str}]"
+
 
 class Laplace(Kernel):
     def __init__(self, length_scale="auto"):
@@ -36,3 +43,10 @@ class Laplace(Kernel):
             sc = self._scale
 
         return torch.exp(-torch.sqrt(pdist2(x, y)) / sc)
+
+    def string_id(self):
+        if type(self._scale) is str:
+            scale_str = self._scale
+        else:
+            scale_str = f"{self._scale:.3f}"
+        return f"Laplace[{scale_str}]"

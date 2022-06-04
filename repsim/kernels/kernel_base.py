@@ -37,6 +37,9 @@ class Kernel(object):
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         raise NotImplementedError("Kernel._call_impl must be implemented by a subclass")
 
+    def string_id(self):
+        raise NotImplementedError("Kernel.name must be implemented by a subclass")
+
 
 class SumKernel(Kernel):
     def __init__(self, kernels: Iterable[Kernel], weights=None):
@@ -53,3 +56,6 @@ class SumKernel(Kernel):
         for w, k in zip(self.weights[1:], self.kernels[1:]):
             tot += k(x, y) * w
         return tot
+
+    def string_id(self):
+        return f"SumKernel[{'+'.join(k.string_id() for k in self.kernels)}]"

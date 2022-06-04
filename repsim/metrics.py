@@ -9,6 +9,7 @@ from repsim.geometry.manifold import (
     Scalar,
 )
 from repsim import pairwise
+from repsim.kernels import DEFAULT_KERNEL
 from repsim.util import upper_triangle
 from repsim.util import MetricType, CompareType
 
@@ -24,7 +25,7 @@ class RepresentationMetricSpace(SymmetricMatrix):
 
     def __init__(self, n: int, kernel=None):
         super(RepresentationMetricSpace, self).__init__(rows=n)
-        self._kernel = kernel
+        self._kernel = kernel if kernel is not None else DEFAULT_KERNEL()
 
     @property
     def metric_type(self) -> MetricType:
@@ -42,6 +43,9 @@ class RepresentationMetricSpace(SymmetricMatrix):
 
     def representational_distance(self, x: torch.Tensor, y: torch.Tensor) -> Scalar:
         return self.length(self.to_rdm(x), self.to_rdm(y))
+
+    def string_id(self):
+        return f"{self.__class__.__name__}.{self._kernel.string_id()}.{self.shape[0]}"
 
 
 class AngularCKA(RepresentationMetricSpace, SPDMatrix):

@@ -20,7 +20,7 @@ def compare(
 
     if kernel is None:
         # Default kernel is Linear kernel; in other words, all inner products are natively in x-space
-        kernel = kernels.Linear()
+        kernel = kernels.DEFAULT_KERNEL()
 
     inner_product = kernel(x)
 
