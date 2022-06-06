@@ -121,10 +121,13 @@ class ScaleInvariantStress(RepresentationMetricSpace, DistMatrix):
 
     @staticmethod
     def _rescale(rdm_x: Point):
-        """Rescale the given RDM so that scale-invariant Stress on rdm_x becomes plain old Stress on the rescaled RDMs.
+        """Rescale the given RDM so that the median pairwise distance (using the given kernel) is 1.0.
+
+        Note that this is *not* the same as rescaling the underlying data before applying the kernel. For that, use a
+        kernel with length_scale set to 'auto'.
         """
         upper_x = upper_triangle(rdm_x)
-        return rdm_x / torch.mean(upper_x)
+        return rdm_x / torch.median(upper_x)
 
     def length(self, rdm_x: Point, rdm_y: Point) -> Scalar:
         rescaled_x, rescaled_y = ScaleInvariantStress._rescale(rdm_x), ScaleInvariantStress._rescale(rdm_y)
