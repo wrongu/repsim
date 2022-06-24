@@ -1,7 +1,13 @@
-import torch
-from repsim.geometry.manifold import Manifold, Point, Scalar
-from typing import Callable, Tuple
 import enum
+import torch
+from typing import Callable, Tuple
+
+# Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from repsim.geometry import LengthSpace, Point, Scalar
+
+from repsim.geometry.geodesic import midpoint
 
 
 class OptimResult(enum.Enum):
@@ -11,9 +17,9 @@ class OptimResult(enum.Enum):
     NO_OPT_NEEDED = 0
 
 
-def minimize(fun: Callable[[Point], Scalar],
-             init: Point,
-             space: Manifold,
+def minimize(space: "LengthSpace",
+             fun: Callable[["Point"], "Scalar"],
+             init: "Point",
              *,
              pt_tol: float = 1e-6,
              fn_tol: float = 1e-6,
@@ -21,24 +27,37 @@ def minimize(fun: Callable[[Point], Scalar],
              max_step_size: float = 100.,
              wolfe_c1=1e-4,
              wolfe_c2=0.9,
-             max_iter: int = 10000) -> Tuple[Point, OptimResult]:
+             wolfe_c2_min=1e-2,
+             max_iter: int = 10000) -> Tuple["Point", OptimResult]:
+    """Function minimization on a Length Space by gradient descent and line search.
 
-    def fn_wrapper(x):
-        return fun(x), torch.autograd.functional.jacobian(fun, x)
+    :param space: Length Space
+    :param fun: torch-differentiable function to be minimized
+    :param init: initial point
+    :param pt_tol: convergence tolerance for changes in the coordinate
+    :param fn_tol: convergence tolerance for changes in the function
+    :param init_step_size: initial gradient descent step size
+    :param max_step_size: largest sane gradient descent step size
+    :param wolfe_c1: threshold on first Wolfe condition (progress check - is function improving at least a little?)
+    :param wolfe_c2: threshold on second Wolfe condition (curvature check - is gradient changing by not too much?)
+    :param wolfe_c2_min: rarely both conditions fail, so we reduce c2. Stop trying to do thise when wolfe_c2 < wolfe_c2_min
+    :param max_iter: break regardless of convergence if this many steps reached
+    :return: tuple of (point, OptimResult) where the OptimResult indicates convergence status
+    """
 
     step_size, pt = init_step_size, init.clone()
-    fval, grad = fn_wrapper(pt)
+    fval, grad = fun(pt), torch.autograd.functional.jacobian(fun, pt)
     for itr in range(max_iter):
         # Update by gradient descent + line search
         step_direction = -1 * grad
-        new_pt = space.project(pt.detach() + step_size * step_direction)
-        new_fval, new_grad = fn_wrapper(new_pt)
+        new_pt = space.project(pt + step_size * step_direction)
+        new_fval, new_grad = fun(new_pt), torch.autograd.functional.jacobian(fun, new_pt)
 
         # Test for convergence
-        if space.length(pt.detach(), new_pt.detach()) <= pt_tol and \
+        if space.length(pt, new_pt) <= pt_tol and \
                 new_fval <= fval and \
                 fval - new_fval <= fn_tol:
-            return new_pt.detach() if new_fval < fval else pt.detach(), OptimResult.CONVERGED
+            return new_pt if new_fval < fval else pt, OptimResult.CONVERGED
 
         # Check Wolfe conditions
         sq_step_size = (grad * step_direction).sum()
@@ -46,16 +65,78 @@ def minimize(fun: Callable[[Point], Scalar],
         condition_ii = (step_direction*new_grad).sum() >= wolfe_c2 * sq_step_size
         if condition_i and condition_ii:
             # Both conditions met! Update pt and loop.
-            pt, fval, grad = new_pt.detach().clone(), new_fval, new_grad
+            pt, fval, grad = new_pt.clone(), new_fval, new_grad
         elif condition_i and not condition_ii:
             # Step size is too small - accept the new value but adjust step_size for next loop
-            pt, fval, grad = new_pt.detach().clone(), new_fval, new_grad
+            pt, fval, grad = new_pt.clone(), new_fval, new_grad
             step_size = min(max_step_size, step_size * 1.1)
         elif condition_ii and not condition_i:
             # Step size is too big - adjust and loop, leaving pt, fval, and grad unchanged
             step_size *= 0.8
         else:
-            return pt.detach(), OptimResult.CONDITIONS_VIOLATED
+            # Both conditions violated, indicating that the curvature is high (so condition 2 fails) and the function is
+            # barely changing (so condition 1 fails). When this first happens, we can make some more (slow) progress by
+            # making the threshold on c2 less strict. But eventually we will give up when wolfe_c2 < wolfe_c2_min
+            wolfe_c2 *= 0.8
+            if wolfe_c2 < wolfe_c2_min:
+                return pt, OptimResult.CONDITIONS_VIOLATED
+            elif new_fval < fval:
+                # Despite condition weirdness, the new fval still improved. Accept the new point then loop.
+                pt, fval, grad = new_pt.clone(), new_fval, new_grad
 
     # Max iterations reached – return final value of 'pt' with flag indicating max steps reached
-    return pt.detach(), OptimResult.MAX_STEPS_REACHED
+    return pt, OptimResult.MAX_STEPS_REACHED
+
+
+def project_by_binary_search(space: "LengthSpace",
+                             pt_a: "Point",
+                             pt_b: "Point",
+                             pt_c: "Point",
+                             tol=1e-6,
+                             max_recurse=20) -> Tuple["Point", OptimResult]:
+    """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the geodesic that
+    connects pt_a to pt_b.
+
+    :param space: a LengthSpace defining the metric and geodesic
+    :param pt_a: start point of the geodesic
+    :param pt_b: end point of the geodesic
+    :param pt_c: point to be projected
+    :param tol: result will be within this tolerance, as measured by space.length
+    :param max_recurse: how many halvings is too many halvings? 0.5^20 gives a resolution of about 1 part per million
+    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
+    from pt_a to pt_x is minimized
+    """
+    dist_a_c, dist_c_b = space.length(pt_a, pt_c), space.length(pt_c, pt_b)
+    # Break-early case 1: pt_a is already along a geodesic
+    if torch.isclose(dist_a_c + dist_c_b, space.length(pt_a, pt_b), atol=tol):
+        return pt_c.clone(), OptimResult.CONVERGED
+    # Break-early case 2: pt_fro and pt_to are the same point
+    elif space.length(pt_a, pt_b) < tol:
+        return space.project((pt_a + pt_b) / 2), OptimResult.CONVERGED
+    # Break-early case 3: we've recursed and subdivided too many times. Return a copy of pt_a or pt_b - whichever is
+    # closer
+    if max_recurse == 0:
+        if space.length(pt_a, pt_c) < space.length(pt_b, pt_c):
+            return pt_a.clone(), OptimResult.MAX_STEPS_REACHED
+        else:
+            return pt_b.clone(), OptimResult.MAX_STEPS_REACHED
+
+    # Get a midpoint between 'fro' and 'to'. TODO if multiple geodesics, need to pick whichever is closest to pt_c
+    mid = midpoint(space, pt_a, pt_b)
+
+    # Distance from midpoint to pt_c
+    dist_mid_c = space.length(mid, pt_c)
+
+    # Recursively subdivide the geodesic
+    if dist_mid_c < min(dist_a_c, dist_c_b):
+        # Midpoint is min.. recurse to whichever side is closer to pt_a
+        if dist_a_c < dist_c_b:
+            return project_by_binary_search(space, pt_a, mid, pt_c, tol=tol, max_recurse=max_recurse - 1)
+        else:
+            return project_by_binary_search(space, mid, pt_b, pt_c, tol=tol, max_recurse=max_recurse - 1)
+    elif dist_a_c < dist_c_b:
+        # Recurse left.
+        return project_by_binary_search(space, pt_a, mid, pt_c, tol=tol, max_recurse=max_recurse - 1)
+    else:
+        # DRecurse right.
+        return project_by_binary_search(space, mid, pt_a, pt_c, tol=tol, max_recurse=max_recurse - 1)

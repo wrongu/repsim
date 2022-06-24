@@ -7,6 +7,7 @@ class CompareType(enum.Enum):
 
     CompareType.INNER_PRODUCT: an inner product like x @ y.T. Large values = more similar.
     CompareType.ANGLE: values are 'distances' in [0, pi/2]
+    CompareType.COSINE: values are cosine of ANGLE, i.e. inner-product of unit vectors
     CompareType.DISTANCE: a distance, like ||x-y||. Small values = more similar.
     CompareType.SQUARE_DISTANCE: squared distance.
 
@@ -16,35 +17,9 @@ class CompareType(enum.Enum):
 
     INNER_PRODUCT = -1
     ANGLE = 0
-    DISTANCE = 1
-    SQUARE_DISTANCE = 2
-
-
-class MetricType(enum.Enum):
-    """Different levels of strictness for measuring distance from x to y.
-
-    MetricType.CORR: the result isn't a metric but a correlation in [-1, 1]. Large values indicate low 'distance', sort of.
-    MetricType.PRE_METRIC: a function d(x, y) that satisfies d(x,x)=0 and x(d,y)>=0
-    MetricType.METRIC: a pre-metric that also satisfies the triangle inequality: d(x,y)+d(y,z)>=d(x,z)
-    MetricType.LENGTH: a metric that is equal to the length of a shortest-path
-    MetricType.RIEMANN: a length along a Riemannian manifold
-    MetricType.ANGLE: angle between vectors, which is by definition an arc length (along a sphere surface)
-
-    Note that each of these specializes the ones above it, which is why each of the Enum values is constructed as a bit
-    mask: in binary, PRE_METRIC is 00001, METRIC is 00011, LENGTH is 00111, ANGLE is 10111, and RIEMANN is 01111
-    """
-
-    CORR = 0x00
-    PRE_METRIC = 0x01
-    METRIC = 0x03
-    LENGTH = 0x07
-    RIEMANN = 0x0F
-    ANGLE = 0x17
-
-
-class CorrType(enum.Enum):
-    PEARSON = 1
-    SPEARMAN = 2
+    COSINE = 1
+    DISTANCE = 2
+    SQUARE_DISTANCE = 3
 
 
 def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
@@ -77,22 +52,3 @@ def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
 
     i, j = torch.triu_indices(*A.size(), offset=offset, device=A.device)
     return A[i, j]
-
-
-def corrcoef(
-    a: torch.Tensor, b: torch.Tensor, type: CorrType = CorrType.PEARSON
-) -> torch.Tensor:
-    """Correlation coefficient between two vectors.
-
-    :param a: a 1-dimensional torch.Tensor of values
-    :param b: a 1-dimensional torch.Tensor of values
-    :return: correlation between a and b
-    """
-    if type == CorrType.PEARSON:
-        z_a = (a - a.mean()) / a.std(dim=-1)
-        z_b = (b - b.mean()) / b.std(dim=-1)
-        return torch.sum(z_a * z_b)
-    elif type == CorrType.SPEARMAN:
-        return corrcoef(
-            torch.argsort(a).float(), torch.argsort(b).float(), type=CorrType.PEARSON
-        )

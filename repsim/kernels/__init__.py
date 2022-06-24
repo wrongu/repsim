@@ -1,7 +1,6 @@
-from .kernel_base import Kernel, center
+from .kernel_base import Kernel
 from .radial import SquaredExponential, Laplace
 from .linear import Linear
+from .kernel_methods import center, hsic, cka
 
-DEFAULT_KERNEL = Linear
-
-__all__ = ["Kernel", "center", "SquaredExponential", "Laplace", "Linear", "DEFAULT_KERNEL"]
+DEFAULT_KERNEL = Linear()

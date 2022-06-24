@@ -1,12 +1,6 @@
 import torch
-from repsim.util import CorrType, CompareType, MetricType
-from repsim.metrics import (
-    RepresentationMetricSpace,
-    Stress,
-    ScaleInvariantStress,
-    AngularCKA,
-    AffineInvariantRiemannian,
-)
+from repsim.util import CompareType
+from repsim.metrics import RepresentationMetricSpace, Stress, AngularCKA, AffineInvariantRiemannian
 from typing import Union
 
 
@@ -18,9 +12,8 @@ def compare(
 ) -> torch.Tensor:
     metric_lookup = {
         "stress": Stress,
-        "scale_invariant_stress": ScaleInvariantStress,
         "angular_cka": AngularCKA,
-        "riemannian": AffineInvariantRiemannian,
+        "affine_invariant_riemannian": AffineInvariantRiemannian,
     }
 
     if isinstance(method, str):
@@ -28,12 +21,11 @@ def compare(
             raise ValueError(
                 f'Unrecognized Representational Similarity Method "{method}". Options are: {metric_lookup.keys()}'
             )
-        method = metric_lookup[method.lower()](n=x.size()[0], **kwargs)
+        method = metric_lookup[method.lower()](m=x.size()[0], **kwargs)
     elif not isinstance(method, RepresentationMetricSpace):
         raise ValueError(f"Method must be string or RepresentationMetricSpace instance, but was {type(method)}")
 
-    return method.length(method.to_rdm(x), method.to_rdm(y))
+    return method.length(method.neural_data_to_point(x), method.neural_data_to_point(y))
 
 
-__all__ = ["compare", "RepresentationMetricSpace", "Stress", "ScaleInvariantStress", "AngularCKA",
-           "AffineInvariantRiemannian", "CorrType", "CompareType", "MetricType"]
+__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA", "AffineInvariantRiemannian", "CompareType"]

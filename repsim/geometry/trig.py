@@ -1,30 +1,20 @@
 import torch
-from repsim.geometry.manifold import Manifold, Point, Scalar
-from repsim.geometry.geodesic import point_along
-from repsim.geometry.optimize import OptimResult
-import warnings
+
+# Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from repsim.geometry import LengthSpace, Point, Scalar
 
 
-def slerp(
-    pt_a: Point,
-    pt_b: Point,
-    frac: float,
-) -> Point:
-    """
-    Arc slerp between two points.
+def slerp(pt_a: "Point", pt_b: "Point", frac: float) -> "Point":
+    """Spherical Linear intERPolation between two points -- see [1]. The interpolated point will always have unit norm.
 
-    https://en.m.wikipedia.org/wiki/Slerp
+    [1] https://en.m.wikipedia.org/wiki/Slerp
 
-    The interpolated point will always have unit norm.
-
-    Arguments:
-        pt_a (Point): First point.
-        pt_b (Point): Second point.
-        frac (float): Fraction of the way from pt_a to pt_b.
-
-    Returns:
-        Point: The slerp between pt_a and pt_b.
-
+    :param pt_a: starting point. Will be normalized to unit length.
+    :param pt_b: ending point. Will be normalized to unit length.
+    :param frac: fraction of arc length from pt_a to pt_b
+    :return: unit vector on the great-circle connecting pt_a to pt_b that is 'frac' of the distance from pt_a to pt_b
     """
     assert 0.0 <= frac <= 1.0, "frac must be between 0 and 1"
 
@@ -49,10 +39,10 @@ def slerp(
         # dot(a,b) is effectively 1, so A and B are effectively the same vector. Do Euclidean interpolation.
         return _norm(a*(1-frac) + b*frac)
     elif dot_ab < -1 + eps:
-        # dot(a,b) is effectively 1, so A and B are effectively at opposite poles. There are infinitely many geodesics.
+        # dot(a,b) is effectively -1, so A and B are effectively at opposite poles. There are infinitely many geodesics.
         raise ValueError("A and B are andipodal - cannot SLERP")
 
-    # Get 'omega' - the angle between a and b
+    # Get 'omega' - the angle between a and b, clipping for numerical stability
     omega = torch.acos(torch.clip(dot_ab, -1.0, 1.0))
     # Do interpolation using the SLERP formula
     a_frac = a * torch.sin((1 - frac) * omega) / torch.sin(omega)
@@ -60,17 +50,24 @@ def slerp(
     return (a_frac + b_frac).reshape(a.shape)
 
 
-def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> Scalar:
+def angle(space: "LengthSpace", pt_a: "Point", pt_b: "Point", pt_c: "Point", **kwargs) -> "Scalar":
+    """Angle B of triangle ABC, based on incident angle of geodesics AB and CB.
+
+    If B is along the geodesic from A to C, then the angle is pi (180 degrees). If A=C, then the angle is zero.
+
+    :param space: a LengthSpace defining the metric and geodesics
+    :param pt_a: point A
+    :param pt_b: point B
+    :param pt_c: point C
+    :key delta: at what scale does the space look locally Euclidean? Default 0.01
+    :param kwargs: optional arguments passed to geodesic optimization, if needed
+    :return:
     """
-    Angle B of triangle ABC, based on incident angle of geodesics AB and CB.
-    If B is along the geodesic from A to C, then the angle is pi (180 degrees).
-    If A=C, then the angle is zero.
-    """
-    pt_ba, converged_ba = point_along(pt_b, pt_a, space, frac=0.01, **kwargs)
-    pt_bc, converged_bc = point_along(pt_b, pt_c, space, frac=0.01, **kwargs)
-    if converged_ba != OptimResult.CONVERGED or converged_bc != OptimResult.CONVERGED:
-        warnings.warn("point_along failed to converge; angle may be inaccurate")
-    # Law of cosines using small local distances
+    delta = kwargs.pop('delta', 0.01)
+    pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
+    pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)
+
+    # Law of cosines using small local distances around B
     d_c, d_a, d_b = (
         space.length(pt_b, pt_ba),
         space.length(pt_b, pt_bc),
@@ -80,4 +77,4 @@ def angle(pt_a: Point, pt_b: Point, pt_c: Point, space: Manifold, **kwargs) -> S
     return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
 
 
-__all__ = ["angle"]
+__all__ = ["slerp", "angle"]

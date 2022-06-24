@@ -27,6 +27,10 @@ class SquaredExponential(Kernel):
             scale_str = f"{self._scale:.3f}"
         return f"SqExp[{scale_str}]"
 
+    def effective_dim(self, x) -> float:
+        return float("inf")
+
+
 
 class Laplace(Kernel):
     def __init__(self, length_scale="auto"):
@@ -50,3 +54,7 @@ class Laplace(Kernel):
         else:
             scale_str = f"{self._scale:.3f}"
         return f"Laplace[{scale_str}]"
+
+    def effective_dim(self, x) -> float:
+        return float("inf")
+

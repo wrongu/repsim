@@ -2,26 +2,6 @@ import torch
 from typing import Union, Iterable
 
 
-def center(k: torch.Tensor) -> torch.Tensor:
-    """Center features of a kernel by pre- and post-multiplying by the centering matrix H.
-
-    In other words, if k_ij is dot(x_i, x_j), the result will be dot(x_i - mu_x, x_j - mu_x).
-
-    :param k: a n by n Gram matrix of inner products between xs
-    :return: a n by n centered matrix
-    """
-    n = k.size()[0]
-    if k.size() != (n, n):
-        raise ValueError(
-            f"Expected k to be nxn square matrix, but it has size {k.size()}"
-        )
-    H = (
-        torch.eye(n, device=k.device, dtype=k.dtype)
-        - torch.ones((n, n), device=k.device, dtype=k.dtype) / n
-    )
-    return H @ k @ H
-
-
 class Kernel(object):
     def __call__(
         self, x: torch.Tensor, y: Union[None, torch.Tensor] = None
@@ -39,6 +19,9 @@ class Kernel(object):
 
     def string_id(self):
         raise NotImplementedError("Kernel.name must be implemented by a subclass")
+
+    def effective_dim(self, x) -> float:
+        raise NotImplementedError("Kernel.effective_dim must be implemented by a subclass")
 
 
 class SumKernel(Kernel):
@@ -59,3 +42,6 @@ class SumKernel(Kernel):
 
     def string_id(self):
         return f"SumKernel[{'+'.join(k.string_id() for k in self.kernels)}]"
+
+    def effective_dim(self, x) -> float:
+        return max([k.effective_dim(x) for k in self.kernels])

@@ -1,4 +1,5 @@
 import torch
+from math import prod
 from .kernel_base import Kernel
 
 
@@ -8,3 +9,6 @@ class Linear(Kernel):
 
     def string_id(self):
         return "Linear"
+
+    def effective_dim(self, x):
+        return prod(x.shape[1:])
