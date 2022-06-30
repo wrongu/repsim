@@ -52,3 +52,10 @@ def upper_triangle(A: torch.Tensor, offset=1) -> torch.Tensor:
 
     i, j = torch.triu_indices(*A.size(), offset=offset, device=A.device)
     return A[i, j]
+
+
+def prod(values):
+    out = 1
+    for v in values:
+        out *= v
+    return out

@@ -1,7 +1,7 @@
 import abc
 import torch
 import warnings
-from math import prod
+from repsim.util import prod
 from repsim.geometry.optimize import OptimResult, minimize
 
 # Typing hints... ideally we would specify sizes here, but can't do that with the current type system

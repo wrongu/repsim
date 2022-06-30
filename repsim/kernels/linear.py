@@ -1,5 +1,5 @@
 import torch
-from math import prod
+from repsim.util import prod
 from .kernel_base import Kernel
 
 
