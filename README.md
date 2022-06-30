@@ -7,66 +7,47 @@ See [rsatoolbox](https://github.com/rsagroup/rsatoolbox) for a more mature and f
 repository
 - does everything in PyTorch, so the outputs are in principle differentiable.
 - provides kernel-based methods such as CKA.
-- provides metric RSA methods of [Williams et al. (2021)](http://arxiv.org/abs/2110.14739) and [Shahbazi et al. (2021)](https://doi.org/10.1016/j.neuroimage.2021.118271).
+- emphasizes metric properties of computing "distance" between representations, inspired by [Williams et al. (2021)](http://arxiv.org/abs/2110.14739) and [Shahbazi et al. (2021)](https://doi.org/10.1016/j.neuroimage.2021.118271).
 
 ## Entry point
 
-If `x` and `y` are matrices of data (`torch.Tensor`s specifically), each with `n` rows (where `x[i,:]` and `y[i,:]` 
+If `x` and `y` are matrices of data (`torch.Tensor`s specifically), each with `m` rows (where `x[i,:]` and `y[i,:]` 
 correspond to the same input), then compare representations in each using
 ```python
 import repsim
-dist = repsim.compare(x, y, method='stress')
+x = ... # some (m, n_x) matrix of neural data
+y = ... # some (m, n_y) matrix of neural data
+dist = repsim.compare(x, y, method='angular_cka')
 print("The representational distance between x and y is", dist)
+```
+
+For more fine-grained control, don't use `repsim.compare`, but explicitly instantiate a metric instead. Each metric
+requires first mapping from neural data to some other space. For example, the `AngularCKA` metric converts `(m,n_x)`
+size neural data into a `(m,m)` size Gram matrix, then computes distances between Gram matrices. The 
+`metric.neural_data_to_point` function accomplishes this. So, we could do something like the following:
+```python
+from repsim.metrics import AngularCKA
+from repsim.kernels import SquaredExponential
+# By default, AngularCKA uses a Linear kernel for the Gram matrix, but we can override that here
+metric = AngularCKA(m=x.shape[0], kernel=SquaredExponential())
+dist = metric.length(metric.neural_data_to_point(x), metric.neural_data_to_point(y))
 ```
 
 ## Terminology
 
-- Here, a **neural representation** refers to a `n` by `d` matrix containing the activity of `d` neurons in
-response to `n` inputs.
+- Here, a **neural representation** refers to a `m` by `n` matrix containing the activity of `n` neurons in
+response to `m` inputs.
 - **Similarity** and **distance** are essentially inverses. Similarity is high when distance is low, and vice versa.
 Both are (with few exceptions) non-negative quantities.
-- **Pairwise similarity** refers to a `n` by `n` matrix of similarity scores among all pairs of input-items for a given 
-neural representation. Likewise, **pairwise distance** is `n` by `n` but contains distances rather than similarities.
+- **Pairwise similarity** refers to a `m` by `m` matrix of similarity scores among all pairs of input-items for a given 
+neural representation. Likewise, **pairwise distance** is `m` by `m` but contains distances rather than similarities.
 - **Representational similarity** is a scalar score that is large when two neural representations are similar to each
 other. **Representational distance** is likewise a scalar that is large when two representations are dissimilar.
 
 ## Design
 
-There are two core operations of any measure of representational similarity:
-
-1. Computing **pairwise similarity** (or **pairwise distance**). The result is a `n` by `n` Representational Similarity
-Matrix (RSM) (or Representational Distance Matrix (RDM)). 
-2. Comparing two RSMs (or RDMs) to each other to get a scalar **representational similarity** (or distance) score. 
-
-Step 1 is handled by functions in the `repsim.pairwise` module. See the `repsim.pairwise.compare()` function to get started.
-
-Step 2 is handled by the top-level `repsim.compare()` function.
-
-In some special circumstances, we can take computational shortcuts bypassing Step 1, so most users will not explicitly
-call anything inside `repsim.pairwise`.
-
-Applying the kernel trick is central to some of the representational similarity measures we use. The `repsim.kernels`
-module contains the kernel logic. By default, `repsim` makes all pairwise comparisons using a Linear kernel - in other
-words using the usual definition of the inner-product. This can be overridden specifying a `kernel` keyword argument to
-`repsim.pairwise.compare`, or a `kernel_x` and `kernel_y` argument to `repsim.compare`. For example:
-```python
-import repsim
-import repsim.kernels
-import repsim.pairwise
-from repsim.util import CompareType
-import torch
-
-n, d = 10, 3
-x = torch.randn(n, d)
-
-# Get pairwise Euclidean distances
-rdm_linear = repsim.pairwise.compare(x, type=CompareType.DISTANCE)
-
-# Get pairwise distances in feature space using a laplace kernel with an automatic length-scale
-k = repsim.kernels.Laplace(length_scale='auto')
-rdm_laplace = repsim.pairwise.compare(x, kernel=k, type=CompareType.DISTANCE)
-
-# Get pairwise similarity using squared exponential kernel with a custom length-scale
-k = repsim.kernels.SquaredExponential(length_scale=0.2)
-rsm_sqexp_short = repsim.pairwise.compare(x, kernel=k, type=CompareType.INNER_PRODUCT)
-```
+* The `repsim/geometry/` module contains fairly generic code for handling geometry, like computing geodesics and angles
+in arbitrary spaces. The key interfaces are defined in `repsim/geometry/length_space.py`.
+* The `repsim/metrics/` module is where the primary classes for neural representational distance are defined. They
+inherit from (a subclass of) `repsim.geometry.LengthSpace`, so each metric has nice geometric properties.
+* The `repsim/kernels/` module, as its name implies, contains classes for computing kernel-ified inner products
