@@ -110,9 +110,10 @@ def project_by_binary_search(space: "LengthSpace",
     # Break-early case 1: pt_a is already along a geodesic
     if torch.isclose(dist_a_c + dist_c_b, space.length(pt_a, pt_b), atol=tol):
         return pt_c.clone(), OptimResult.CONVERGED
-    # Break-early case 2: pt_fro and pt_to are the same point
+    # Break-early case 2: pt_fro and pt_to are equivalent (note that this does not mean they are 'identical'). Return
+    # a midpoint between a and b.
     elif space.length(pt_a, pt_b) < tol:
-        return space.project((pt_a + pt_b) / 2), OptimResult.CONVERGED
+        return midpoint(space, pt_a, pt_b), OptimResult.CONVERGED
     # Break-early case 3: we've recursed and subdivided too many times. Return a copy of pt_a or pt_b - whichever is
     # closer
     if max_recurse == 0:
@@ -138,5 +139,5 @@ def project_by_binary_search(space: "LengthSpace",
         # Recurse left.
         return project_by_binary_search(space, pt_a, mid, pt_c, tol=tol, max_recurse=max_recurse - 1)
     else:
-        # DRecurse right.
+        # Recurse right.
         return project_by_binary_search(space, mid, pt_a, pt_c, tol=tol, max_recurse=max_recurse - 1)

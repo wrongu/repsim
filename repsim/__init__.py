@@ -1,6 +1,6 @@
 import torch
-from repsim.util import CompareType
-from repsim.metrics import RepresentationMetricSpace, Stress, AngularCKA, AffineInvariantRiemannian
+from repsim.metrics import RepresentationMetricSpace, Stress, AngularCKA, AffineInvariantRiemannian, \
+    EuclideanShapeMetric, AngularShapeMetric
 from typing import Union
 
 
@@ -14,6 +14,8 @@ def compare(
         "stress": Stress,
         "angular_cka": AngularCKA,
         "affine_invariant_riemannian": AffineInvariantRiemannian,
+        "euclidean_shape_metric": EuclideanShapeMetric,
+        "angular_shape_metric": AngularShapeMetric
     }
 
     if isinstance(method, str):
@@ -28,4 +30,10 @@ def compare(
     return method.length(method.neural_data_to_point(x), method.neural_data_to_point(y))
 
 
-__all__ = ["compare", "RepresentationMetricSpace", "Stress", "AngularCKA", "AffineInvariantRiemannian", "CompareType"]
+__all__ = ["compare",
+           "RepresentationMetricSpace",
+           "Stress",
+           "AngularCKA",
+           "AffineInvariantRiemannian",
+           "EuclideanShapeMetric",
+           "AngularShapeMetric"]

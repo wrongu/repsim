@@ -1,4 +1,4 @@
-from repsim import AngularCKA, AffineInvariantRiemannian, Stress
+from repsim import AngularCKA, AffineInvariantRiemannian, Stress, AngularShapeMetric, EuclideanShapeMetric
 from repsim.kernels import SquaredExponential
 
 
@@ -35,3 +35,16 @@ def test_names():
 
     metric = Stress(m=100, kernel=SquaredExponential(length_scale=0.3))
     assert metric.string_id() == "Stress.SqExp[0.300].100"
+
+    # SHAPE METRICS
+    metric = AngularShapeMetric(m=1000, p=100)
+    assert metric.string_id() == "ShapeMetric[1.00][100][angular].1000"
+
+    metric = EuclideanShapeMetric(m=1000, p=100)
+    assert metric.string_id() == "ShapeMetric[1.00][100][euclidean].1000"
+
+    metric = AngularShapeMetric(m=100, p=40, alpha=0.5)
+    assert metric.string_id() == "ShapeMetric[0.50][40][angular].100"
+
+    metric = EuclideanShapeMetric(m=100, p=40, alpha=0.5)
+    assert metric.string_id() == "ShapeMetric[0.50][40][euclidean].100"

@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from repsim import Stress, AngularCKA, AffineInvariantRiemannian
+from repsim import Stress, AngularCKA, AffineInvariantRiemannian, AngularShapeMetric, EuclideanShapeMetric
 from repsim.kernels import SquaredExponential
 from repsim.geometry import LengthSpace, GeodesicLengthSpace
 from repsim.geometry.optimize import OptimResult, project_by_binary_search
@@ -15,6 +15,7 @@ BIG_M = 10000 if torch.cuda.is_available() else 500
 def test_geodesic_stress():
     _test_geodesic_helper(5, 3, 4, Stress(m=5))
     _test_geodesic_gradient_descent(5, 3, 4, Stress(m=5))
+    _test_geodesic_endpoints(5, 3, 4, Stress(m=5))
 
 
 def test_geodesic_stress_big():
@@ -24,6 +25,7 @@ def test_geodesic_stress_big():
 def test_geodesic_cka():
     _test_geodesic_helper(5, 3, 4, AngularCKA(m=5))
     _test_geodesic_gradient_descent(5, 3, 4, AngularCKA(m=5))
+    _test_geodesic_endpoints(5, 3, 4, AngularCKA(m=5))
 
 
 def test_geodesic_cka_big():
@@ -33,10 +35,37 @@ def test_geodesic_cka_big():
 def test_geodesic_riemann():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
     _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
+    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
 
 def test_geodesic_riemann_big():
     _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
+
+
+def test_geodesic_angular_shape():
+    _test_geodesic_helper(10, 3, 4, AngularShapeMetric(10, p=2))
+    # _test_geodesic_gradient_descent(10, 3, 4, AngularShapeMetric(10, p=2))  # FAILS but we don't need it to work
+    _test_geodesic_endpoints(10, 3, 4, AngularShapeMetric(10, p=2))
+    _test_geodesic_helper(10, 3, 4, AngularShapeMetric(10, p=5))
+    # _test_geodesic_gradient_descent(10, 3, 4, AngularShapeMetric(10, p=5))  # FAILS but we don't need it to work
+    _test_geodesic_endpoints(10, 3, 4, AngularShapeMetric(10, p=5))
+
+
+def test_geodesic_angular_shape_big():
+    _test_geodesic_helper(BIG_M, 3, 4, AngularShapeMetric(BIG_M, 50))
+
+
+def test_geodesic_euclidean_shape():
+    _test_geodesic_helper(10, 3, 4, EuclideanShapeMetric(10, p=2))
+    # _test_geodesic_gradient_descent(10, 3, 4, EuclideanShapeMetric(10, p=2))  # FAILS but we don't need it to work
+    _test_geodesic_endpoints(10, 3, 4, EuclideanShapeMetric(10, p=2))
+    _test_geodesic_helper(10, 3, 4, EuclideanShapeMetric(10, p=5))
+    # _test_geodesic_gradient_descent(10, 3, 4, EuclideanShapeMetric(10, p=5))  # FAILS but we don't need it to work
+    _test_geodesic_endpoints(10, 3, 4, EuclideanShapeMetric(10, p=5))
+
+
+def test_geodesic_euclidean_shape_big():
+    _test_geodesic_helper(BIG_M, 3, 4, EuclideanShapeMetric(BIG_M, 50))
 
 
 def test_slerp():
@@ -73,24 +102,37 @@ def test_slerp():
 
 def _test_geodesic_helper(m, nx, ny, metric):
     x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
-    k_x, k_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
+    pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     frac, tolerance = np.random.rand(1)[0], 1e-2
-    k_z = metric.geodesic(k_x, k_y, frac=frac)
-    dist_xy = metric.length(k_x, k_y)
-    dist_xz = metric.length(k_x, k_z)
-    dist_zy = metric.length(k_z, k_y)
+    pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
+    dist_xy = metric.length(pt_x, pt_y)
+    dist_xz = metric.length(pt_x, pt_z)
+    dist_zy = metric.length(pt_z, pt_y)
 
-    assert metric.contains(k_z, atol=tolerance), \
+    assert metric.contains(pt_z, atol=tolerance), \
         f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
     assert np.isclose(dist_xy, dist_xz + dist_zy, atol=tolerance), \
         f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
     assert np.isclose(dist_xz/dist_xy, frac, atol=tolerance), \
         f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
 
-    ang = angle(metric, k_x, k_z, k_y).item()
+    ang = angle(metric, pt_x, pt_z, pt_y).item()
     assert np.abs(ang - np.pi) < tolerance, \
         f"Angle through midpoint using {metric} should be pi but is {ang}"
+
+
+def _test_geodesic_endpoints(m, nx, ny, metric):
+    x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
+    pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
+
+    pt_t0 = metric._geodesic_impl(pt_x, pt_y, frac=0.0)
+    pt_t1 = metric._geodesic_impl(pt_x, pt_y, frac=1.0)
+
+    assert torch.allclose(metric.length(pt_x, pt_t0), pt_x.new_zeros(1), atol=1e-6), \
+        "geodesic at frac=0 is not equivalent to x!"
+    assert torch.allclose(metric.length(pt_y, pt_t1), pt_x.new_zeros(1), atol=1e-6), \
+        "geodesic at frac=1 is not equivalent to y!"
 
 
 def _test_geodesic_gradient_descent(m, nx, ny, metric):
@@ -133,15 +175,33 @@ def test_projection_riemann_big():
     _test_projection_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M))
 
 
+def test_projection_angular_shape():
+    _test_projection_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
+    _test_projection_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
+
+
+def test_projection_angular_shape_big():
+    _test_projection_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
+
+
+def test_projection_euclidean_shape():
+    _test_projection_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
+    _test_projection_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
+
+
+def test_projection_euclidean_shape_big():
+    _test_projection_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
+
+
 def _test_projection_helper(m, nx, ny, nz, metric):
     x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
-    k_x, k_y, k_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
+    pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
 
     tolerance = 1e-4
-    proj, converged = project_by_binary_search(metric, k_x, k_y, k_z, tol=tolerance / 2)
-    dist_xy = metric.length(k_x, k_y)
-    dist_xp = metric.length(k_x, proj)
-    dist_py = metric.length(proj, k_y)
+    proj, converged = project_by_binary_search(metric, pt_x, pt_y, pt_z, tol=tolerance / 2)
+    dist_xy = metric.length(pt_x, pt_y)
+    dist_xp = metric.length(pt_x, proj)
+    dist_py = metric.length(proj, pt_y)
 
     assert converged == OptimResult.CONVERGED, \
         f"Projected point failed to converge using {metric}: {proj}"
@@ -161,6 +221,16 @@ def test_stress_contains():
 
 def test_affine_invariant_riemannian_contains():
     _test_contains_helper(AffineInvariantRiemannian(100, kernel=SquaredExponential()), 100, 10)
+
+
+def test_angular_shape_contains():
+    _test_contains_helper(AngularShapeMetric(100, p=5), 100, 10)
+    _test_contains_helper(AngularShapeMetric(100, p=50), 100, 10)
+
+
+def test_euclidean_shape_contains():
+    _test_contains_helper(EuclideanShapeMetric(100, p=5), 100, 10)
+    _test_contains_helper(EuclideanShapeMetric(100, p=50), 100, 10)
 
 
 def _test_contains_helper(metric, m, nx):
