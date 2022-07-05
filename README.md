@@ -3,11 +3,12 @@
 
 This repository provides the `repsim` package for comparing representational similarity in PyTorch.
 
-See [rsatoolbox](https://github.com/rsagroup/rsatoolbox) for a more mature and fully-featured toolbox. In contrast, this
-repository
+See [rsatoolbox](https://github.com/rsagroup/rsatoolbox) for a more mature and fully-featured toolbox, or 
+[netrep](https://github.com/ahwillia/netrep) for a sklearn-like interface for shape metrics. In contrast, this repository
 - does everything in PyTorch, so the outputs are in principle differentiable.
-- provides kernel-based methods such as CKA.
+- provides kernel-based methods such as CKA and Stress.
 - emphasizes metric properties of computing "distance" between representations, inspired by [Williams et al. (2021)](http://arxiv.org/abs/2110.14739) and [Shahbazi et al. (2021)](https://doi.org/10.1016/j.neuroimage.2021.118271).
+- In particular, we implemented closed-form 'shortest paths' or geodesics between representations for each metric.
 
 ## Entry point
 
@@ -41,8 +42,13 @@ response to `m` inputs.
 Both are (with few exceptions) non-negative quantities.
 - **Pairwise similarity** refers to a `m` by `m` matrix of similarity scores among all pairs of input-items for a given 
 neural representation. Likewise, **pairwise distance** is `m` by `m` but contains distances rather than similarities.
-- **Representational similarity** is a scalar score that is large when two neural representations are similar to each
-other. **Representational distance** is likewise a scalar that is large when two representations are dissimilar.
+- **Similarity** is a scalar score that is large when two neural representations are similar to each
+other. **Distance** is likewise a scalar that is large when two representations are dissimilar.
+- When talking about **metrics**, we mean methods for computing distances between neural representations that satisfy four key properties:
+  1. Identity, or $d(x,x) = 0$. (Really, we have $d(x,y)=0$ for all "equivalent" $x$ and $y$, e.g. we might want a distance that is invariant to scale)
+  2. Symmetry, or $d(x,y) = d(y,x)$. (Note that in the future we may want to support asymmetry)
+  3. Triangle Inequality, or $d(x,z) ≤ d(x,y) + d(y,z)$
+  4. [Length](https://en.wikipedia.org/wiki/Intrinsic_metric). Intuitively, this means that $d(x,y)$ can be broken up into the sum of segment lengths of a shortest path connecting $x$ to $y$.
 
 ## Design
 
