@@ -1,13 +1,13 @@
 import abc
 import torch
-from repsim.geometry.length_space import Point
+from repsim.geometry.length_space import LengthSpace, Point
 
 
 # Typing hints: neural data of size (n, d)
 NeuralData = torch.Tensor
 
 
-class RepresentationMetricSpace(abc.ABC):
+class RepresentationMetricSpace(LengthSpace, abc.ABC):
     """Abstract base class for metrics between neural representations. Subclasses should use multiple-inheritance to
     subclass from both RepresentationMetricSpace and from a type of repsim.geometry.LengthSpace.
     """
