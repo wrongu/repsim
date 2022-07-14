@@ -8,7 +8,6 @@ from repsim.geometry.optimize import OptimResult, minimize
 Point = torch.Tensor
 Scalar = torch.Tensor
 Vector = torch.Tensor
-TangentSpace = torch.Tensor
 
 
 class LengthSpace(abc.ABC):
@@ -169,12 +168,12 @@ class RiemannianSpace(GeodesicLengthSpace):
     """
 
     @abc.abstractmethod
-    def tangent(self, pt_a: Point) -> TangentSpace:
-        """Return a basis for the tangent space. Shape will be self.shape + (self.dim,). That is, each coordinate (each
-        element of the 'dim' dimension) has an associated basis vector in the ambient space of size self.shape.
+    def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
+        """Project a vector into the tangent space at pt_a.
 
         :param pt_a: point on the manifold
-        :return: a TangentSpace, i.e. a tensor containing unit basis vectors in the ambient space
+        :param vec_w: a vector in the ambient space whose base is at pt_a
+        :return: projection of vec_w into the tangent space at pt_a. (If already in it, the returned vector is vec_w)
         """
 
     @abc.abstractmethod
@@ -209,4 +208,4 @@ class RiemannianSpace(GeodesicLengthSpace):
         """
 
 
-__all__ = ["Point", "Scalar", "TangentSpace", "Vector", "LengthSpace", "GeodesicLengthSpace", "RiemannianSpace"]
+__all__ = ["Point", "Scalar", "Vector", "LengthSpace", "GeodesicLengthSpace", "RiemannianSpace"]
