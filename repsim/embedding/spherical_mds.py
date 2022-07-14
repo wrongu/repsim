@@ -65,10 +65,10 @@ def _spherical_mds_single(distances,
 
         if sq_stress - new_sq_stress < eps:
             # Converged!
-            return z, new_sq_stress, itr
+            return z, torch.sqrt(new_sq_stress), itr
         else:
             sq_stress = new_sq_stress
-    return z, sq_stress, max_iter-1
+    return z, torch.sqrt(sq_stress), max_iter-1
 
 
 
