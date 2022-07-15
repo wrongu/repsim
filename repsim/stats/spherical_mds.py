@@ -8,7 +8,6 @@ from sklearn.utils import check_random_state
 from joblib import Parallel, delayed, effective_n_jobs
 
 
-
 def _spherical_mds_single(distances,
                           *,
                           dim=2,
@@ -71,7 +70,6 @@ def _spherical_mds_single(distances,
     return z, torch.sqrt(sq_stress), max_iter-1
 
 
-
 def spherical_mds(distances,
                   *,
                   dim=2,
@@ -126,7 +124,6 @@ def spherical_mds(distances,
         return best_z, best_stress
 
 
-
 class SphericalMDS(BaseEstimator):
     def __init__(
             self,
@@ -160,7 +157,7 @@ class SphericalMDS(BaseEstimator):
                 raise ValueError("With dissimilarity='precomputed', X must be a valid matrix of pairwise arc-distances.")
             self.dissimilarity_matrix_ = X
         elif self.dissimilarity == "arc length":
-            self.dissimilarity_matrix_ = arc_distances(X, self.center)
+            self.dissimilarity_matrix_ = pairwise_arc_lengths(X, self.center)
         else:
             raise ValueError("'dissimilarity' argument must be one of 'arc length' or 'precomputed'")
 
@@ -178,7 +175,7 @@ class SphericalMDS(BaseEstimator):
         return self.embedding_
 
 
-def arc_distances(X, center):
+def pairwise_arc_lengths(X, center):
     if center:
         X = X - torch.mean(X, 0)
     dot_ij = X @ X.T
