@@ -1,4 +1,4 @@
-import torch
+import numpy as np
 from typing import Iterable
 from . import Point
 from .length_space import RiemannianSpace
@@ -29,16 +29,32 @@ class IterativeFrechetMean(object):
             self.mean = self.space.exp_map(self.mean, mean_to_x / self.n)
 
 
-def optimize_frechet_mean(space: RiemannianSpace, points: Iterable[Point]) -> Point:
+def iterate_frechet_mean(space: RiemannianSpace, points: Iterable[Point]) -> Point:
+    """Convenience wrapper around IterativeFrechetMean
+    """
+    ifm = IterativeFrechetMean(space)
+    for pt in points:
+        ifm.update(pt)
+    return ifm.mean
+
+
+def optimize_frechet_mean(space: RiemannianSpace,
+                          points: Iterable[Point],
+                          init_method: str = "random point") -> Point:
     """The Frechet Mean is the generalization of 'mean' to data on a manifold. Here, the manifold is a sphere. In other
     words, we're computing the point on the sphere that minimizes the sum of squared distances to all rows of X.
     """
 
     points = [space.project(x) for x in points]
 
-    # start with a guess – project the euclidean mean onto the sphere
-    euclidean_mean = torch.mean(X, dim=0)
-    init = euclidean_mean / torch.sqrt(torch.sum(euclidean_mean * euclidean_mean))
+    if init_method == "random point":
+        init = np.random.choice(points).clone()
+    elif init_method == "euclidean":
+        init = space.project(sum(points) / len(points))
+    elif init_method == "iterative":
+        init = iterate_frechet_mean(space, points)
+    else:
+        raise ValueError(f"Invalid initialization method: {init_method}")
 
     # loss function
     def sum_squared_distance(m):
