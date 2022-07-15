@@ -6,6 +6,7 @@ from sklearn.base import BaseEstimator
 from sklearn.manifold import MDS
 from sklearn.utils import check_random_state
 from joblib import Parallel, delayed, effective_n_jobs
+import warnings
 
 
 def _spherical_mds_single(distances,
@@ -125,6 +126,10 @@ def spherical_mds(distances,
 
 
 class SphericalMDS(BaseEstimator):
+    """MultiDimensional Scaling on a sphere, in the style of sklearn.manifold.MDS.
+
+    Note: backend is torch rather than numpy.
+    """
     def __init__(
             self,
             dim=2,
@@ -148,10 +153,13 @@ class SphericalMDS(BaseEstimator):
         self.random_state = random_state
 
     def fit(self, X, y=None, init=None):
-        self.fit_transform(X, init=init)
+        self.fit_transform(X, y, init=init)
         return self
 
     def fit_transform(self, X, y=None, init=None):
+        if y is not None:
+            warnings.warn("SphericalMDS does not use 'y' argument")
+
         if self.dissimilarity == "precomputed":
             if not _is_arc_length_matrix(X):
                 raise ValueError("With dissimilarity='precomputed', X must be a valid matrix of pairwise arc-distances.")
@@ -176,6 +184,7 @@ class SphericalMDS(BaseEstimator):
 
 
 def pairwise_arc_lengths(X, center):
+    # TODO - implement batch-wise and pair-wise operations natively in HyperSphere (and other spaces)
     if center:
         X = X - torch.mean(X, 0)
     dot_ij = X @ X.T

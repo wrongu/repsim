@@ -1,12 +1,15 @@
-import warnings
-
 import torch
 from repsim.geometry import RiemannianSpace
 from repsim.geometry.stats import optimize_frechet_mean
 from sklearn.base import BaseEstimator
+import warnings
 
 
 class ManifoldPCA(BaseEstimator):
+    """Principal Component Analysis on a Riemannian manifold, in the style of sklearn.decomposition.PCA
+
+    Note: backend is torch rather than numpy.
+    """
     def __init__(self, space: RiemannianSpace, *, n_components=2):
         super(ManifoldPCA, self).__init__()
         self.space = space
