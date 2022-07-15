@@ -11,7 +11,7 @@ class IterativeFrechetMean(object):
     words, we're computing the point on the sphere that minimizes the sum of squared distances to all rows of X.
 
     Algorithm iteratively refines an estimate of the mean, analogous to other familiar 'running mean' algorithms. Result
-    is only approximate and depends on data order, so we shuffle.
+    is only approximate and depends on data order, so it is encouraged that calls to update() are shuffled.
     """
 
     def __init__(self, space: RiemannianSpace):
@@ -68,4 +68,4 @@ def optimize_frechet_mean(space: RiemannianSpace,
     return frechet_mean
 
 
-__all__ = ["IterativeFrechetMean", "optimize_frechet_mean"]
+__all__ = ["IterativeFrechetMean", "iterate_frechet_mean", "optimize_frechet_mean"]
