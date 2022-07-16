@@ -28,6 +28,9 @@ class IterativeFrechetMean(object):
             mean_to_x = self.space.log_map(self.mean, x)
             self.mean = self.space.exp_map(self.mean, mean_to_x / self.n)
 
+    def reset(self, n=0):
+        self.n = n
+
 
 def iterate_frechet_mean(space: RiemannianSpace, points: Iterable[Point]) -> Point:
     """Convenience wrapper around IterativeFrechetMean

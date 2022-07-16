@@ -62,20 +62,20 @@ def _test_log_exp_helper(d):
 
 
 def test_spherical_mds():
-    _test_spherical_mds_helper(2, 2, 10, None)
-    _test_spherical_mds_helper(2, 2, 10, 2)
-    # _test_spherical_mds_helper(10, 10, 100, 4)
-    _test_spherical_mds_helper(10, 2, 10, 2)
+    _test_spherical_mds_helper(2, 2, 10, None, None)
+    _test_spherical_mds_helper(2, 2, 10, 2, None)
+    _test_spherical_mds_helper(10, 10, 100, 4, 10)
+    _test_spherical_mds_helper(10, 2, 10, 2, None)
 
 
-def _test_spherical_mds_helper(true_d, fit_d, n, n_jobs):
+def _test_spherical_mds_helper(true_d, fit_d, n, n_jobs, max_inner_loop):
     sphere = HyperSphere(dim=true_d)
     points = torch.stack([sphere.project(torch.randn(true_d+1)) for _ in range(n)], dim=0)
-    mds = SphericalMDS(dim=fit_d, n_jobs=n_jobs)
+    mds = SphericalMDS(dim=fit_d, n_jobs=n_jobs, max_inner_loop=max_inner_loop)
     new_points = mds.fit_transform(points).float()
 
     if true_d == fit_d:
-        assert torch.allclose(*_orthogonal_procrustes(points, new_points), atol=1e-2), \
+        assert torch.allclose(*_orthogonal_procrustes(points, new_points), atol=2e-2), \
             "MDS failed to recover the correct points when true_d == fit_d == " + str(true_d)
 
 
