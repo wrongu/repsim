@@ -1,8 +1,9 @@
 import torch
 from typing import Union, Iterable
+import abc
 
 
-class Kernel(object):
+class Kernel(abc.ABC):
     def __call__(
         self, x: torch.Tensor, y: Union[None, torch.Tensor] = None
     ) -> torch.Tensor:
@@ -14,14 +15,17 @@ class Kernel(object):
 
         return self._call_impl(x, y)
 
+    @abc.abstractmethod
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError("Kernel._call_impl must be implemented by a subclass")
+        pass
 
+    @abc.abstractmethod
     def string_id(self):
-        raise NotImplementedError("Kernel.name must be implemented by a subclass")
+        pass
 
+    @abc.abstractmethod
     def effective_dim(self, x) -> float:
-        raise NotImplementedError("Kernel.effective_dim must be implemented by a subclass")
+        pass
 
 
 class SumKernel(Kernel):
