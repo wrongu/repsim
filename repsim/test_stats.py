@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from repsim.geometry.hypersphere import HyperSphere
 from repsim.geometry.trig import angle
 from repsim.stats import SphericalMDS, ManifoldPCA
@@ -37,7 +38,7 @@ def _test_geodesic_helper(d):
     assert torch.isclose(dist_ac / dist_ab, torch.tensor([t]), atol=1e-4)
 
     a = angle(sphere, pt_a, pt_c, pt_b)
-    assert torch.isclose(a, torch.tensor([torch.pi]), atol=1e-3)
+    assert torch.isclose(a, torch.tensor([np.pi]), atol=1e-3)
 
 
 def test_log_exp():

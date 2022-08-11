@@ -63,7 +63,7 @@ def angle(space: "LengthSpace", pt_a: "Point", pt_b: "Point", pt_c: "Point", **k
     :param kwargs: optional arguments passed to geodesic optimization, if needed
     :return:
     """
-    delta = kwargs.pop('delta', 0.01)
+    delta = kwargs.pop('delta', 1e-3)
     pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
     pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)
 

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from repsim.geometry import Point, Scalar, Vector, RiemannianSpace
 from repsim.geometry.trig import slerp
 
@@ -36,7 +37,7 @@ class HyperSphere(RiemannianSpace):
         vec_w = self.to_tangent(pt_a, vec_w)
         norm = torch.sqrt(torch.sum(vec_w * vec_w))
         c1 = torch.cos(norm)
-        c2 = torch.sinc(norm / torch.pi)
+        c2 = torch.sinc(norm / np.pi)
         return c1 * pt_a + c2 * vec_w
 
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:

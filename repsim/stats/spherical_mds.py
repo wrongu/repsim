@@ -213,7 +213,7 @@ def _is_arc_length_matrix(X):
         return False
     if X.shape[0] != X.shape[1]:
         return False
-    if not torch.all(X >= 0.) or not torch.all(X <= torch.pi):
+    if not torch.all(X >= 0.) or not torch.all(X <= np.pi):
         return False
     if not torch.allclose(torch.diag(X), torch.zeros(X.shape[:1])):
         return False

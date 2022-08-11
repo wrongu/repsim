@@ -10,22 +10,31 @@ class Kernel(abc.ABC):
         if y is None:
             y = x
 
-        if x.size()[0] != y.size()[0]:
-            raise ValueError("Mismatch in first dimension of x and y")
-
         return self._call_impl(x, y)
 
     @abc.abstractmethod
     def _call_impl(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        pass
+        """Class-specific implementation of __call__(x, y). If x is size (mx, ?) and y is size (my, ?), then output
+        will be size (mx, my), containing pairwise kernel evaluations (inner products in the RKHS) for each pair of x
+        and y.
+
+        :param x: tensor of size (mx, ?)
+        :param y: tensor of size (my, ?)
+        :return: pairwise kernel evaluations of size (mx, my)
+        """
 
     @abc.abstractmethod
     def string_id(self):
-        pass
+        """Get a string identifier for this kernel.
+        """
 
     @abc.abstractmethod
     def effective_dim(self, x) -> float:
-        pass
+        """Get 'effective' dimensionality of the feature space. This may be data-dependent, or it might ignore 'x'.
+
+        :param x: example data point
+        :return: dimensionality of phi(x), the feature embedding of x
+        """
 
 
 class SumKernel(Kernel):
