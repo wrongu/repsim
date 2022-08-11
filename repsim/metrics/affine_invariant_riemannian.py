@@ -94,10 +94,17 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, GeodesicLengthSpace):
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         a_half = _matrix_sqrt(pt_a)
         inv_a_half = _inv_matrix_sqrt(pt_a)
-        # See equations (3.12) and (3.13) in [1]
+        # See equations (3.12) and (3.13) in [1]. Here we combine them and simplify a bit algebraically.
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
         # in Medical Image Analysis. Elsevier Ltd. https://doi.org/10.1016/B978-0-12-814725-2.00010-8
-        return a_half @ _matrix_exp(frac * _matrix_log(inv_a_half @ pt_b @ inv_a_half)) @ a_half
+        #
+        # Long version:
+        #   log_a_b = a_half @ _matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
+        #   return a_half @ _matrix_exp(frac * inv_a_half @ log_a_b @ inv_a_half) @ a_half
+        # Medium version:
+        #   return a_half @ _matrix_exp(frac * _matrix_log(inv_a_half @ pt_b @ inv_a_half)) @ a_half
+        # Short version:
+        return a_half @ _matrix_pow(inv_a_half @ pt_b @ inv_a_half, frac) @ a_half
 
 
 def _eig_fun(hmat, fun):
@@ -121,3 +128,7 @@ def _matrix_log(hmat):
 
 def _matrix_exp(hmat):
     return _eig_fun(hmat, fun=torch.exp)
+
+
+def _matrix_pow(hmat, p):
+    return _eig_fun(hmat, fun=lambda e: torch.pow(e, p))
