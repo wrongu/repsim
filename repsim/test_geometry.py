@@ -1,8 +1,10 @@
 import torch
 import numpy as np
-from repsim import Stress, AngularCKA, AffineInvariantRiemannian, AngularShapeMetric, EuclideanShapeMetric
+from repsim import Stress, AngularCKA, AffineInvariantRiemannian, AngularShapeMetric, EuclideanShapeMetric, \
+    RepresentationMetricSpace
 from repsim.kernels import SquaredExponential
-from repsim.geometry import LengthSpace, GeodesicLengthSpace
+from repsim.geometry import LengthSpace, GeodesicLengthSpace, RiemannianSpace
+from repsim.geometry.hypersphere import HyperSphere
 from repsim.geometry.optimize import OptimResult, project_by_binary_search
 from repsim.geometry.trig import angle, slerp
 
@@ -32,13 +34,13 @@ def test_geodesic_cka_big():
     _test_geodesic_helper(BIG_M, 100, 100, AngularCKA(m=BIG_M))
 
 
-def test_geodesic_riemann():
+def test_geodesic_air():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
     _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
     _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
 
-def test_geodesic_riemann_big():
+def test_geodesic_air_big():
     _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
 
 
@@ -151,6 +153,98 @@ def _test_geodesic_gradient_descent(m, nx, ny, metric):
         "Closed-form and grad-descent geodesics are not close!"
 
 
+def _test_geodesic_log_exp_helper(metric, pt_x, pt_y):
+    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+
+    frac, tolerance = np.random.rand(1)[0], 1e-2
+    pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
+
+    tangent_x_to_y = metric.log_map(pt_x, pt_y)
+    pt_z_2 = metric.exp_map(pt_x, frac * tangent_x_to_y)
+
+    tangent_y_to_x = metric.log_map(pt_y, pt_x)
+    pt_z_3 = metric.exp_map(pt_y, (1 - frac) * tangent_y_to_x)
+
+    tol = metric.length(pt_x, pt_y) / 1000
+    assert metric.length(pt_z, pt_z_2) < tol, "result of metric.geodesic() is not close to exp(x,frac*log(x,y))"
+    assert metric.length(pt_z, pt_z_3) < tol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
+
+
+def _test_parallel_transport_helper(metric, pt_x, pt_y):
+    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+
+    # Setup: map random tangent vector u from base x to base y
+    dummy = metric.log_map(pt_x, pt_y)
+    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
+    u_y = metric.levi_civita(pt_x, pt_y, u_x)
+
+    # Test 1: result is in the tangent space of y
+    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y)), "map of u_x to y did not land in the tangent space of y"
+
+    # Test 2: vector is unchanged by transporting there and back again
+    tol = 1e-3
+    assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol), "reverse map did not get back to the starting u"
+
+    # Test 3: length is preserved by the map
+    length_u_x = torch.sqrt(torch.sum(u_x * u_x))
+    length_u_y = torch.sqrt(torch.sum(u_y * u_y))
+    assert torch.isclose(length_u_x, length_u_y, atol=tol), "map did not preserve length of u"
+
+    # Test 4: inner products are preserved by the map
+    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
+    v_y = metric.levi_civita(pt_x, pt_y, v_x)
+    # TODO - this is incorrect inner-product and is failing!
+    dot_uv_x = torch.sum(u_x * v_x)
+    dot_uv_y = torch.sum(u_y * v_y)
+    assert torch.isclose(dot_uv_x, dot_uv_y, atol=tol), "map did not preserve dot(u,v)"
+
+
+def test_riemann_hypersphere():
+    d = 2 + np.random.randint(10)
+    metric = HyperSphere(dim=d)
+    pt_x = metric.project(torch.randn(d+1))
+    pt_y = metric.project(torch.randn(d+1))
+
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_air():
+    metric = AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential())
+    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_stress():
+    metric = Stress(m=BIG_M)
+    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+    metric = Stress(m=BIG_M, kernel=SquaredExponential())
+    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_angular_cka():
+    metric = AngularCKA(m=BIG_M)
+    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+    metric = AngularCKA(m=BIG_M, kernel=SquaredExponential())
+    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
 def test_projection_stress():
     _test_projection_helper(5, 3, 4, 4, Stress(m=5))
 
@@ -209,6 +303,12 @@ def _test_projection_helper(m, nx, ny, nz, metric):
         f"Projected point failed contains() test using {metric}, {metric}"
     assert np.isclose(dist_xy, dist_xp + dist_py, atol=tolerance), \
         f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+
+    frac = np.random.rand(1)[0]
+    pt_geo = metric.geodesic(pt_x, pt_y, frac)
+    pt_geo_projected, _ = project_by_binary_search(metric, pt_x, pt_y, pt_geo, tol=tolerance / 2)
+    assert torch.allclose(pt_geo, pt_geo_projected, atol=tolerance), \
+        "Projection of a point on the geodesic failed to recover that same point"
 
 
 def test_angular_cka_contains():
