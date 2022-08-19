@@ -1,12 +1,13 @@
 import torch
+import numpy as np
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
-from repsim.geometry import GeodesicLengthSpace, Point, Scalar
+from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.geometry.trig import slerp
 from repsim.kernels import center, DEFAULT_KERNEL
 from repsim import pairwise
 
 
-class AngularCKA(RepresentationMetricSpace, GeodesicLengthSpace):
+class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     """Compute the angular distance between two representations x and y using the arccos(CKA) method described in the
     supplement of Williams et al (2021).
 
@@ -39,9 +40,9 @@ class AngularCKA(RepresentationMetricSpace, GeodesicLengthSpace):
     def string_id(self) -> str:
         return f"AngularCKA.{self._kernel.string_id()}.{self.m}"
 
-    #########################################
-    # Implement GeodesicLengthSpace methods #
-    #########################################
+    #################################
+    # Implement LengthSpace methods #
+    #################################
 
     def _project_impl(self, pt: Point) -> Point:
         assert pt.shape == (self.m, self.m), \
@@ -82,6 +83,10 @@ class AngularCKA(RepresentationMetricSpace, GeodesicLengthSpace):
         # Clipping because arccos(1.00000000001) gives NaN, and some numerical error can cause that to happen
         return torch.arccos(torch.clip(cka, -1.0, 1.0))
 
+    #########################################
+    # Implement GeodesicLengthSpace methods #
+    #########################################
+
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         """Compute the geodesic between two points pt_a and pt_b.
 
@@ -90,6 +95,39 @@ class AngularCKA(RepresentationMetricSpace, GeodesicLengthSpace):
         # TODO - ideally we would compute CKA using the unbiased HSIC, but then what does that do to the geodesic?
         # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a and ctr_b don't
         return self.project(slerp(pt_a, pt_b, frac))
+
+    #####################################
+    # Implement RiemannianSpace methods #
+    #####################################
+
+    def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
+        # Identical to Hypersphere.to_tangent (note that pt_a is already a unit-norm matrix)
+        dot_a_w = torch.sum(pt_a * vec_w)
+        return vec_w - dot_a_w * pt_a
+
+    def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
+        # Identical to Hypersphere.exp_map
+        # See https://math.stackexchange.com/a/1930880
+        vec_w = self.to_tangent(pt_a, vec_w)
+        norm = torch.sqrt(torch.sum(vec_w * vec_w))
+        c1 = torch.cos(norm)
+        c2 = torch.sinc(norm / np.pi)
+        return c1 * pt_a + c2 * vec_w
+
+    def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
+        # Identical to Hypersphere.log_map
+        unscaled_w = self.to_tangent(pt_a, pt_b)
+        norm_w = unscaled_w / torch.sqrt(torch.sum(unscaled_w * unscaled_w))
+        return norm_w * self.length(pt_a, pt_b)
+
+    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+        # Refer to Hypersphere._levi_civita_impl
+        vec_v = self.log_map(pt_a, pt_b)
+        angle = self.length(pt_a, pt_b)
+        unit_v = vec_v / angle  # the length of tangent vector v *is* the length from a to b
+        w_along_v = torch.sum(unit_v * vec_w)
+        orth_part = vec_w - w_along_v * unit_v
+        return orth_part + torch.cos(angle) * w_along_v * unit_v - torch.sin(angle) * w_along_v * pt_a
 
 
 def _matrix_unit_norm(A):

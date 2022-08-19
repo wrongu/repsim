@@ -1,12 +1,12 @@
 import torch
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
-from repsim.geometry import GeodesicLengthSpace, Point, Scalar
+from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.kernels import DEFAULT_KERNEL
 from repsim.util import upper_triangle
 from repsim import pairwise
 
 
-class Stress(RepresentationMetricSpace, GeodesicLengthSpace):
+class Stress(RepresentationMetricSpace, RiemannianSpace):
     """Mean squared difference in pairwise distances, AKA 'stress' from the MDS literature.
     """
 
@@ -29,18 +29,14 @@ class Stress(RepresentationMetricSpace, GeodesicLengthSpace):
     def string_id(self) -> str:
         return f"Stress.{self._kernel.string_id()}.{self.shape[0]}"
 
-    #########################################
-    # Implement GeodesicLengthSpace methods #
-    #########################################
+    #################################
+    # Implement LengthSpace methods #
+    #################################
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
         # Override DistMatrix.length, using instead mean squared difference in distances from upper-triangle of RDMs
         diff_in_dist = upper_triangle(pt_a - pt_b)
         return torch.sqrt(torch.mean(diff_in_dist**2))
-
-    def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
-        # Stress geodesics are linear in the space of RDMs
-        return self.project((1 - frac) * pt_a + frac * pt_b)
 
     def _project_impl(self, pt: Point) -> Point:
         # Ensure symmetric
@@ -62,3 +58,31 @@ class Stress(RepresentationMetricSpace, GeodesicLengthSpace):
         if not torch.allclose(torch.diag(pt), pt.new_zeros((self.m,)), atol=atol):
             return False
         return True
+
+    #########################################
+    # Implement GeodesicLengthSpace methods #
+    #########################################
+
+    def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
+        # Stress geodesics are linear in the space of RDMs
+        return self.project((1 - frac) * pt_a + frac * pt_b)
+
+    #####################################
+    # Implement RiemannianSpace methods #
+    #####################################
+
+    def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
+        # Find the nearest matrix to vec_w that is symmetric and has zero diagonal
+        return (vec_w + vec_w.T) / 2 * (1. - torch.eye(self.m))
+
+    def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
+        # Stress = Euclidean in the space of distance matrices... just add w to a
+        return pt_a + vec_w
+
+    def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
+        # Stress = Euclidean in the space of distance matrices... just subtract a from b
+        return pt_b - pt_a
+
+    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+        # Stress = Euclidean in the space of distance matrices... transport is a no-op
+        return vec_w.clone()

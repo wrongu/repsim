@@ -1,11 +1,11 @@
 import torch
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
-from repsim.geometry import GeodesicLengthSpace, Point, Scalar
+from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.kernels import DEFAULT_KERNEL
 from repsim import pairwise
 
 
-class AffineInvariantRiemannian(RepresentationMetricSpace, GeodesicLengthSpace):
+class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 
     NOTE: given (n,d) sized inputs, this involves inverting a (n,n)-sized matrix, which might be rank-deficient. The
@@ -50,9 +50,9 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, GeodesicLengthSpace):
         else:
             return f"AffineInvariantRiemannian.{self._kernel.string_id()}.{self.m}"
 
-    #####################################
-    # Implement RiemannianSpace methods #
-    #####################################
+    #################################
+    # Implement LengthSpace methods #
+    #################################
 
     def _project_impl(self, pt: Point) -> Point:
         assert pt.shape == (self.m, self.m), \
@@ -91,6 +91,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, GeodesicLengthSpace):
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
         return torch.sqrt(torch.sum(log_eigs**2))
 
+    #########################################
+    # Implement GeodesicLengthSpace methods #
+    #########################################
+
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         a_half = _matrix_sqrt(pt_a)
         inv_a_half = _inv_matrix_sqrt(pt_a)
@@ -106,6 +110,39 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, GeodesicLengthSpace):
         # Short version:
         return a_half @ _matrix_pow(inv_a_half @ pt_b @ inv_a_half, frac) @ a_half
 
+    #####################################
+    # Implement RiemannianSpace methods #
+    #####################################
+
+    def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
+        # Find the nearest matrix to vec_w that is symmetric
+        return (vec_w + vec_w.T) / 2
+
+    def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
+        # See equation (3.12) in [1].
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
+        a_half = _matrix_sqrt(pt_a)
+        inv_a_half = _inv_matrix_sqrt(pt_a)
+        return a_half @ _matrix_exp(inv_a_half @ vec_w @ inv_a_half) @ a_half
+
+    def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
+        # See equation (3.13) in [1].
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
+        a_half = _matrix_sqrt(pt_a)
+        inv_a_half = _inv_matrix_sqrt(pt_a)
+        return a_half @ _matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
+
+    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+        # See equation (3.15) in [1].
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
+        # vec_v = self.log_map(pt_a, pt_b)
+        # return -1/2*(vec_v @ torch.linalg.solve(pt_a, vec_w) + vec_w @ torch.linalg.solve(pt_a, vec_v))
+        a_half = _matrix_sqrt(pt_a)
+        inv_a_half = _inv_matrix_sqrt(pt_a)
+        e = a_half @ _matrix_sqrt(inv_a_half @ pt_b @ inv_a_half) @ inv_a_half
+        # Include to_tangent() to be absolutely sure the output lands in the tangent space of pt_b despite numerical
+        # imprecision
+        return self.to_tangent(pt_b, e @ vec_w @ e.T)
 
 def _eig_fun(hmat, fun):
     """Apply a function to the eigenvalues of a symmetric (hermitian) matrix
