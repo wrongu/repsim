@@ -59,18 +59,28 @@ def angle(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs) -
     :param kwargs: optional arguments passed to geodesic optimization, if needed
     :return:
     """
-    delta = kwargs.pop('delta', 1e-3)
-    pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
-    pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)
+    if isinstance(space, RiemannianSpace):
+        # Riemannian manifolds have tangent spaces and inner products that we can use to compute the angle easily
+        tangent_ba, tangent_bc = space.log_map(pt_b, pt_a), space.log_map(pt_b, pt_c)
+        norm_ba = tangent_ba / torch.sqrt(space.inner_product(pt_b, tangent_ba, tangent_ba))
+        norm_bc = tangent_bc / torch.sqrt(space.inner_product(pt_b, tangent_bc, tangent_bc))
+        cos_b = space.inner_product(pt_b, norm_ba, norm_bc)
+        return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
+    else:
+        # In general length spaces, we'll approximate the angle by constructing a point 1/1000th of the way from B to
+        # each of A and C, then use the law of cosines locally
+        delta = kwargs.pop('delta', 1e-3)
+        pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
+        pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)
 
-    # Law of cosines using small local distances around B
-    d_c, d_a, d_b = (
-        space.length(pt_b, pt_ba),
-        space.length(pt_b, pt_bc),
-        space.length(pt_ba, pt_bc),
-    )
-    cos_b = 0.5 * (d_a * d_a + d_c * d_c - d_b * d_b) / (d_a * d_c)
-    return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
+        # Law of cosines using small local distances around B
+        d_c, d_a, d_b = (
+            space.length(pt_b, pt_ba),
+            space.length(pt_b, pt_bc),
+            space.length(pt_ba, pt_bc),
+        )
+        cos_b = 0.5 * (d_a * d_a + d_c * d_c - d_b * d_b) / (d_a * d_c)
+        return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
 
 
 __all__ = ["slerp", "angle"]
