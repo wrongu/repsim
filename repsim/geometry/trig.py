@@ -1,12 +1,8 @@
 import torch
-
-# Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from repsim.geometry import LengthSpace, Point, Scalar
+from repsim.geometry import LengthSpace, RiemannianSpace, Point, Scalar
 
 
-def slerp(pt_a: "Point", pt_b: "Point", frac: float) -> "Point":
+def slerp(pt_a: Point, pt_b: Point, frac: float) -> Point:
     """Spherical Linear intERPolation between two points -- see [1]. The interpolated point will always have unit norm.
 
     [1] https://en.m.wikipedia.org/wiki/Slerp
@@ -50,7 +46,7 @@ def slerp(pt_a: "Point", pt_b: "Point", frac: float) -> "Point":
     return (a_frac + b_frac).reshape(a.shape)
 
 
-def angle(space: "LengthSpace", pt_a: "Point", pt_b: "Point", pt_c: "Point", **kwargs) -> "Scalar":
+def angle(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs) -> Scalar:
     """Angle B of triangle ABC, based on incident angle of geodesics AB and CB.
 
     If B is along the geodesic from A to C, then the angle is pi (180 degrees). If A=C, then the angle is zero.

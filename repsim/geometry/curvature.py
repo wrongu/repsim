@@ -1,20 +1,16 @@
 import torch
 from repsim.geometry.geodesic import midpoint
-
-# Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from repsim.geometry import LengthSpace, Point, Scalar
+from repsim.geometry import LengthSpace, Point, Scalar
 
 
-def _bisector_length(x: "Scalar", y: "Scalar", z: "Scalar") -> "Scalar":
+def _bisector_length(x: Scalar, y: Scalar, z: Scalar) -> Scalar:
     """Given a triangle ABC in Euclidean space with side lengths AB=x, BC=y, AC=z, returns
     the length of BD, where D is the midpoint of AC
     """
     return torch.sqrt(x*x/2 + y*y/2 - z*z/4)
 
 
-def alexandrov(space: "LengthSpace", pt_a: "Point", pt_b: "Point", pt_c: "Point") -> "Scalar":
+def alexandrov(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point) -> Scalar:
     """Compute Alexandrov curvature from three points in the space.
 
     :param space: a LengthSpace that defines the metric and geodesics
