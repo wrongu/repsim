@@ -1,6 +1,6 @@
 import abc
 import torch
-from repsim.geometry.length_space import LengthSpace, Point
+from repsim.geometry.manifold import LengthSpace, Point
 
 
 # Typing hints: neural data of size (n, d)

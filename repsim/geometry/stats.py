@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Iterable
 from . import Point
-from .length_space import RiemannianSpace
+from .manifold import RiemannianSpace
 from .optimize import minimize
 import warnings
 
