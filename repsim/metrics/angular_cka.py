@@ -105,6 +105,10 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         dot_a_w = torch.sum(pt_a * vec_w)
         return vec_w - dot_a_w * pt_a
 
+    def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
+        # No special sauce required -- inner product is just the usual in the ambient space
+        return torch.sum(vec_w * vec_v)
+
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # Identical to Hypersphere.exp_map
         # See https://math.stackexchange.com/a/1930880

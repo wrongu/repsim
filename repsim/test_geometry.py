@@ -170,6 +170,28 @@ def _test_geodesic_log_exp_helper(metric, pt_x, pt_y):
     assert metric.length(pt_z, pt_z_3) < tol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
 
 
+def _test_inner_product_helper(metric, pt_x, pt_y):
+    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+
+    vec_w = metric.log_map(pt_x, pt_y)
+    vec_w = vec_w / metric.norm(pt_x, vec_w)
+    pt_z = metric.exp_map(pt_x, vec_w)
+
+    assert torch.isclose(metric.length(pt_x, pt_z), torch.ones(1)), \
+        "Distance to exp(normed tangent vector) should be 1.0"
+
+    vec_v = metric.to_tangent(pt_x, vec_w + torch.randn(vec_w.shape))
+    vec_v = vec_v / metric.norm(pt_x, vec_v)
+    dot_wv = metric.inner_product(pt_x, vec_w, vec_v)
+    dot_vw = metric.inner_product(pt_x, vec_w, vec_v)
+    assert torch.isclose(dot_wv, dot_vw), \
+        "inner_product should be symmetric!"
+
+    scale_w, scale_v = torch.rand(2)
+    assert torch.isclose(scale_w * scale_v * dot_wv, metric.inner_product(pt_x, scale_w * vec_w, scale_v * vec_v)), \
+        "inner_product should scale output with scale of inputs (bilinear)!"
+
+
 def _test_parallel_transport_helper(metric, pt_x, pt_y):
     assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
 
@@ -186,16 +208,15 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
     assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol), "reverse map did not get back to the starting u"
 
     # Test 3: length is preserved by the map
-    length_u_x = torch.sqrt(torch.sum(u_x * u_x))
-    length_u_y = torch.sqrt(torch.sum(u_y * u_y))
+    length_u_x = metric.norm(pt_x, u_x)
+    length_u_y = metric.norm(pt_y, u_y)
     assert torch.isclose(length_u_x, length_u_y, atol=tol), "map did not preserve length of u"
 
     # Test 4: inner products are preserved by the map
     v_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
-    # TODO - this is incorrect inner-product and is failing!
-    dot_uv_x = torch.sum(u_x * v_x)
-    dot_uv_y = torch.sum(u_y * v_y)
+    dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
+    dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
     assert torch.isclose(dot_uv_x, dot_uv_y, atol=tol), "map did not preserve dot(u,v)"
 
 
@@ -206,6 +227,7 @@ def test_riemann_hypersphere():
     pt_y = metric.project(torch.randn(d+1))
 
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
 
@@ -214,6 +236,7 @@ def test_riemann_air():
     pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
 
@@ -222,12 +245,14 @@ def test_riemann_stress():
     pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
     metric = Stress(m=BIG_M, kernel=SquaredExponential())
     pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
 
@@ -236,12 +261,14 @@ def test_riemann_angular_cka():
     pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
     metric = AngularCKA(m=BIG_M, kernel=SquaredExponential())
     pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
 

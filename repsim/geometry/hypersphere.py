@@ -32,6 +32,10 @@ class HyperSphere(RiemannianSpace):
         dot_a_w = torch.sum(pt_a * vec_w)
         return vec_w - dot_a_w * pt_a
 
+    def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
+        # Just the usual inner product in the ambient space
+        return torch.sum(vec_w * vec_v)
+
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # See https://math.stackexchange.com/a/1930880
         vec_w = self.to_tangent(pt_a, vec_w)

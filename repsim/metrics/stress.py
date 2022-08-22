@@ -75,6 +75,10 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
         # Find the nearest matrix to vec_w that is symmetric and has zero diagonal
         return (vec_w + vec_w.T) / 2 * (1. - torch.eye(self.m))
 
+    def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
+        # No special sauce required -- inner product is just the usual in the ambient space
+        return torch.sum(vec_w * vec_v)
+
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # Stress = Euclidean in the space of distance matrices... just add w to a
         return pt_a + vec_w

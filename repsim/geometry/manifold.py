@@ -177,6 +177,34 @@ class RiemannianSpace(GeodesicLengthSpace):
         """
 
     @abc.abstractmethod
+    def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
+        """Inner-product between two tangent vectors (defined at pt_a)
+
+        :param pt_a: point defining the tangent space
+        :param vec_w: first vector
+        :param vec_v: second vector
+        :return: inner product between w and v
+        """
+
+    def squared_norm(self, pt_a: Point, vec_w: Vector):
+        """Compute squared norm of a tangent vector at a point
+
+        :param pt_a: point defining the tangent space
+        :param vec_w: first vector
+        :return: squared length of w according to the metric, AKA <w,w>
+        """
+        return self.inner_product(pt_a, vec_w, vec_w)
+    
+    def norm(self, pt_a: Point, vec_w: Vector):
+        """Compute norm of a tangent vector at a point
+
+        :param pt_a: point defining the tangent space
+        :param vec_w: first vector
+        :return: length of w according to the metric
+        """
+        return torch.sqrt(self.squared_norm(pt_a, vec_w))
+
+    @abc.abstractmethod
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         """Compute exponential map, which intuitively means finding the point pt_b that you get starting from pt_a and
         moving in the direction vec_w, which must be in the tangent space of pt_a.

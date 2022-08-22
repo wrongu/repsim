@@ -118,6 +118,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         # Find the nearest matrix to vec_w that is symmetric
         return (vec_w + vec_w.T) / 2
 
+    def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
+        inv_base_point = _inv_matrix(pt_a)
+        return torch.einsum('ij,ji->', inv_base_point @ vec_w, inv_base_point @ vec_v)
+
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # See equation (3.12) in [1].
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
@@ -144,11 +148,16 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         # imprecision
         return self.to_tangent(pt_b, e @ vec_w @ e.T)
 
+
 def _eig_fun(hmat, fun):
     """Apply a function to the eigenvalues of a symmetric (hermitian) matrix
     """
     e, u = torch.linalg.eigh(hmat)
     return u @ torch.diag(fun(e)) @ u.T
+
+
+def _inv_matrix(hmat):
+    return _eig_fun(hmat, fun=lambda x: 1. / x)
 
 
 def _matrix_sqrt(hmat):
