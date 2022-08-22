@@ -322,11 +322,11 @@ def test_projection_cka_big():
 
 
 def test_projection_riemann():
-    _test_projection_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5))
+    _test_projection_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
 
 def test_projection_riemann_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M))
+    _test_projection_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
 
 
 def test_projection_angular_shape():
