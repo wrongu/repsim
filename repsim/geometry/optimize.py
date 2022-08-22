@@ -92,6 +92,10 @@ def project_by_binary_search(space: "LengthSpace",
                              pt_a: "Point",
                              pt_b: "Point",
                              pt_c: "Point",
+                             *,
+                             dist_a_b = None,
+                             dist_a_c = None,
+                             dist_c_b = None,
                              tol=1e-6,
                              max_recurse=20) -> Tuple["Point", OptimResult]:
     """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the geodesic that
@@ -106,18 +110,24 @@ def project_by_binary_search(space: "LengthSpace",
     :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
     from pt_a to pt_x is minimized
     """
-    dist_a_c, dist_c_b = space.length(pt_a, pt_c), space.length(pt_c, pt_b)
-    # Break-early case 1: pt_a is already along a geodesic
-    if torch.isclose(dist_a_c + dist_c_b, space.length(pt_a, pt_b), atol=tol):
+    if dist_a_b is None:
+        dist_a_b = space.length(pt_a, pt_b)
+    if dist_a_c is None:
+        dist_a_c = space.length(pt_a, pt_c)
+    if dist_c_b is None:
+        dist_c_b = space.length(pt_c, pt_b)
+
+    # Break-early case 1: pt_c is already along a geodesic
+    if torch.isclose(dist_a_c + dist_c_b, dist_a_b, atol=tol):
         return pt_c.clone(), OptimResult.CONVERGED
-    # Break-early case 2: pt_fro and pt_to are equivalent (note that this does not mean they are 'identical'). Return
+    # Break-early case 2: pt_a and pt_b are equivalent (note that this does not mean they are 'identical'). Return
     # a midpoint between a and b.
-    elif space.length(pt_a, pt_b) < tol:
+    elif dist_a_b < tol:
         return midpoint(space, pt_a, pt_b), OptimResult.CONVERGED
     # Break-early case 3: we've recursed and subdivided too many times. Return a copy of pt_a or pt_b - whichever is
     # closer
     if max_recurse == 0:
-        if space.length(pt_a, pt_c) < space.length(pt_b, pt_c):
+        if dist_a_c < dist_c_b:
             return pt_a.clone(), OptimResult.MAX_STEPS_REACHED
         else:
             return pt_b.clone(), OptimResult.MAX_STEPS_REACHED
@@ -128,16 +138,24 @@ def project_by_binary_search(space: "LengthSpace",
     # Distance from midpoint to pt_c
     dist_mid_c = space.length(mid, pt_c)
 
-    # Recursively subdivide the geodesic
-    if dist_mid_c < min(dist_a_c, dist_c_b):
-        # Midpoint is min.. recurse to whichever side is closer to pt_a
-        if dist_a_c < dist_c_b:
-            return project_by_binary_search(space, pt_a, mid, pt_c, tol=tol, max_recurse=max_recurse - 1)
-        else:
-            return project_by_binary_search(space, mid, pt_b, pt_c, tol=tol, max_recurse=max_recurse - 1)
-    elif dist_a_c < dist_c_b:
-        # Recurse left.
-        return project_by_binary_search(space, pt_a, mid, pt_c, tol=tol, max_recurse=max_recurse - 1)
+    # Recurse LEFT if A is closer to C than B is, or RIGHT otherwise
+    if dist_a_c < dist_c_b:
+        return project_by_binary_search(space,
+                                        pt_a=pt_a,
+                                        pt_b=mid,
+                                        pt_c=pt_c,
+                                        tol=tol,
+                                        dist_a_b=dist_a_b/2,
+                                        dist_a_c=dist_a_c,
+                                        dist_c_b=dist_mid_c,
+                                        max_recurse=max_recurse - 1)
     else:
-        # Recurse right.
-        return project_by_binary_search(space, mid, pt_a, pt_c, tol=tol, max_recurse=max_recurse - 1)
+        return project_by_binary_search(space,
+                                        pt_a=mid,
+                                        pt_b=pt_b,
+                                        pt_c=pt_c,
+                                        tol=tol,
+                                        dist_a_b=dist_a_b/2,
+                                        dist_a_c=dist_mid_c,
+                                        dist_c_b=dist_c_b,
+                                        max_recurse=max_recurse - 1)
