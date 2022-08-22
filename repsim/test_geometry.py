@@ -14,6 +14,10 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BIG_M = 10000 if torch.cuda.is_available() else 500
 
 
+def _generate_data_helper(metric, n):
+    return [metric.neural_data_to_point(torch.randn(BIG_M, 100)) for _ in range(n)]
+
+
 def test_geodesic_stress():
     _test_geodesic_helper(5, 3, 4, Stress(m=5))
     _test_geodesic_gradient_descent(5, 3, 4, Stress(m=5))
@@ -107,7 +111,7 @@ def _test_geodesic_helper(m, nx, ny, metric):
     x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
     pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
-    frac, tolerance = np.random.rand(1)[0], 1e-2
+    frac, tolerance = np.random.rand(1)[0], 1e-3
     pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
     dist_xy = metric.length(pt_x, pt_y)
     dist_xz = metric.length(pt_x, pt_z)
@@ -115,7 +119,7 @@ def _test_geodesic_helper(m, nx, ny, metric):
 
     assert metric.contains(pt_z, atol=tolerance), \
         f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xz + dist_zy, atol=tolerance), \
+    assert np.isclose(dist_xy, dist_xz + dist_zy, rtol=tolerance), \
         f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
     assert np.isclose(dist_xz/dist_xy, frac, atol=tolerance), \
         f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
@@ -194,7 +198,8 @@ def _test_inner_product_helper(metric, pt_x, pt_y):
 
 
 def _test_parallel_transport_helper(metric, pt_x, pt_y):
-    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+    assert isinstance(metric, RiemannianSpace), \
+        "This test should only be run with RiemannianSpace subclasses"
 
     # Setup: map random tangent vector u from base x to base y
     dummy = metric.log_map(pt_x, pt_y)
@@ -202,23 +207,27 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 1: result is in the tangent space of y
-    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y)), "map of u_x to y did not land in the tangent space of y"
+    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y)), \
+        "map of u_x to y did not land in the tangent space of y"
 
     # Test 2: vector is unchanged by transporting there and back again
     tol = 1e-3
-    assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol), "reverse map did not get back to the starting u"
+    assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol, rtol=tol), \
+        "reverse map did not get back to the starting u"
 
     # Test 3: length is preserved by the map
     length_u_x = metric.norm(pt_x, u_x)
     length_u_y = metric.norm(pt_y, u_y)
-    assert torch.isclose(length_u_x, length_u_y, atol=tol), "map did not preserve length of u"
+    assert torch.isclose(length_u_x, length_u_y, rtol=tol), \
+        "map did not preserve length of u"
 
     # Test 4: inner products are preserved by the map
     v_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
     dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
     dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
-    assert torch.isclose(dot_uv_x, dot_uv_y, atol=tol), "map did not preserve dot(u,v)"
+    assert torch.isclose(dot_uv_x, dot_uv_y, rtol=tol), \
+        "map did not preserve dot(u,v)"
 
 
 def _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature):
@@ -251,9 +260,7 @@ def test_riemann_hypersphere():
 
 def test_riemann_air():
     metric = AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential())
-    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_z = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
@@ -262,18 +269,14 @@ def test_riemann_air():
 
 def test_riemann_stress():
     metric = Stress(m=BIG_M)
-    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_z = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
     metric = Stress(m=BIG_M, kernel=SquaredExponential())
-    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_z = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
@@ -282,18 +285,14 @@ def test_riemann_stress():
 
 def test_riemann_angular_cka():
     metric = AngularCKA(m=BIG_M)
-    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_z = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
     metric = AngularCKA(m=BIG_M, kernel=SquaredExponential())
-    pt_x = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_y = metric.neural_data_to_point(torch.randn(BIG_M, 100))
-    pt_z = metric.neural_data_to_point(torch.randn(BIG_M, 100))
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
