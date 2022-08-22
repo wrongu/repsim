@@ -76,8 +76,9 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
         return (vec_w + vec_w.T) / 2 * (1. - torch.eye(self.m))
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
-        # No special sauce required -- inner product is just the usual in the ambient space
-        return torch.sum(vec_w * vec_v)
+        # The usual inner-product in the ambient space, with a twist: since we defined _length_impl using only the upper
+        # triangle of RDMs, we need to do the same here.
+        return torch.mean(upper_triangle(vec_w * vec_v))
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # Stress = Euclidean in the space of distance matrices... just add w to a
