@@ -180,10 +180,16 @@ def _test_inner_product_helper(metric, pt_x, pt_y):
 
     vec_w = metric.log_map(pt_x, pt_y)
     vec_w = vec_w / metric.norm(pt_x, vec_w)
-    pt_z = metric.exp_map(pt_x, vec_w)
 
-    assert torch.isclose(metric.length(pt_x, pt_z), torch.ones(1)), \
-        "Distance to exp(normed tangent vector) should be 1.0"
+    # Note: it can happen (esp. with Stress) where exp_map(pt_x, vec_w) lands outside of the constraints. We would like
+    # to assert that length(pt_x, exp_map(pt_x, vec_w))==1., but loop here in case exp_map goes out of bounds.
+    scale, pt_z = 1.0, metric.exp_map(pt_x, vec_w)
+    while not metric.contains(pt_z):
+        scale = scale / 2
+        pt_z = metric.exp_map(pt_x, vec_w * scale)
+
+    assert torch.isclose(metric.length(pt_x, pt_z), scale * torch.tensor(1)), \
+        f"Distance to exp({scale} * normed tangent vector) should be {scale}"
 
     vec_v = metric.to_tangent(pt_x, vec_w + torch.randn(vec_w.shape))
     vec_v = vec_v / metric.norm(pt_x, vec_v)
