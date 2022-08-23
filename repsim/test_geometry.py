@@ -370,6 +370,12 @@ def _test_projection_helper(m, nx, ny, nz, metric):
     assert torch.allclose(pt_geo, pt_geo_projected, atol=tolerance), \
         "Projection of a point on the geodesic failed to recover that same point"
 
+    for i in range(11):
+        geo_pt = metric.geodesic(pt_x, pt_y, float(i)/10)
+        geo_dist = metric.length(pt_z, geo_pt)
+        assert metric.length(pt_z, proj) <= geo_dist, \
+            f"length(z, proj) > length(z, geodesic({i/10:.2}))"
+
 
 def test_angular_cka_contains():
     _test_contains_helper(AngularCKA(100), 100, 10)
