@@ -49,7 +49,7 @@ class HyperSphere(RiemannianSpace):
         norm_w = unscaled_w / torch.sqrt(torch.sum(unscaled_w * unscaled_w))
         return norm_w * self.length(pt_a, pt_b)
 
-    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # Idea: decompose the tangent vector w into (i) a part that is orthogonal to the transport direction, and (ii)
         # a part along the transport direction. The orthogonal part will be unchanged through the map, and the parallel
         # part will be rotated in the plane spanned by pt_a and the unit v. (thanks to the geomstats package for

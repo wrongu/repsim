@@ -223,14 +223,8 @@ class RiemannianSpace(GeodesicLengthSpace):
         :return: vec_w, the vector in the tangent space at pt_a pointing in the direction (and magnitude) of pt_b
         """
 
-    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector, eps=1e-6) -> Vector:
-        if self.length(pt_a, pt_b) < eps:
-            return self.to_tangent(pt_b, vec_w)
-        else:
-            return self._levi_civita_impl(pt_a, pt_b, vec_w)
-
     @abc.abstractmethod
-    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         """Parallel-transport a tangent vector vec_w from pt_a to pt_b. The Levi-Civita connection is a nice way of
         defining "parallel lines" originating at two different places in a curved space. We say that vec_v at pt_b is
         parallel to vec_w at pt_a if, locally at b, levi_civita(pt_a, pt_b, vec_w) is colinear with vec_v.

@@ -88,6 +88,6 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
         # Stress = Euclidean in the space of distance matrices... just subtract a from b
         return pt_b - pt_a
 
-    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # Stress = Euclidean in the space of distance matrices... transport is a no-op
         return vec_w.clone()

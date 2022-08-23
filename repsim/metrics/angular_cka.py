@@ -124,8 +124,8 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         norm_w = unscaled_w / torch.sqrt(torch.sum(unscaled_w * unscaled_w))
         return norm_w * self.length(pt_a, pt_b)
 
-    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
-        # Refer to Hypersphere._levi_civita_impl
+    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+        # Refer to Hypersphere.levi_civita
         vec_v = self.log_map(pt_a, pt_b)
         angle = self.length(pt_a, pt_b)
         unit_v = vec_v / angle  # the length of tangent vector v *is* the length from a to b

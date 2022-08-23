@@ -136,7 +136,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         inv_a_half = _inv_matrix_sqrt(pt_a)
         return a_half @ _matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
 
-    def _levi_civita_impl(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
+    def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # See equation (3.15) in [1].
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
         # vec_v = self.log_map(pt_a, pt_b)
