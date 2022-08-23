@@ -40,9 +40,7 @@ def test_geodesic_cka_big():
 
 def test_geodesic_air():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
-    # This one fails somewhat frequently but only because optimization on curvy manifolds is not super stable. Nothing
-    # wrong with the closed-form geodesics...
-    # _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
+    # _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))  # FAILS but we don't need it to work
     _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
 
@@ -373,7 +371,7 @@ def _test_projection_helper(m, nx, ny, nz, metric):
     for i in range(11):
         geo_pt = metric.geodesic(pt_x, pt_y, float(i)/10)
         geo_dist = metric.length(pt_z, geo_pt)
-        assert metric.length(pt_z, proj) <= geo_dist, \
+        assert metric.length(pt_z, proj) < geo_dist + tolerance, \
             f"length(z, proj) > length(z, geodesic({i/10:.2}))"
 
 
