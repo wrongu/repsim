@@ -4,6 +4,7 @@ from repsim.geometry.hypersphere import HyperSphere
 from repsim.geometry.trig import angle
 from repsim.stats import SphericalMDS, ManifoldPCA
 from repsim.metrics.generalized_shape_metrics import _orthogonal_procrustes
+from repsim.util import pdist2
 
 
 def test_project():
@@ -76,8 +77,52 @@ def _test_spherical_mds_helper(true_d, fit_d, n, n_jobs, max_inner_loop):
     new_points = mds.fit_transform(points).float()
 
     if true_d == fit_d:
-        assert torch.allclose(*_orthogonal_procrustes(points, new_points), atol=2e-2), \
+        _, recovered_points = _orthogonal_procrustes(points, new_points, anchor="a")
+        avg_dist = torch.mean(torch.sqrt(torch.sum((points - recovered_points)**2, dim=1)) / np.sqrt(fit_d))
+        assert avg_dist < 1e-2, \
             "MDS failed to recover the correct points when true_d == fit_d == " + str(true_d)
+
+
+def test_procrustes():
+    tolerance = 1e-6
+    a, b = torch.randn(10, 4), torch.randn(10, 4)
+    new_a, new_b = _orthogonal_procrustes(a, b, anchor="middle")
+    assert new_a.shape == a.shape and new_b.shape == b.shape, \
+        "Procrustes must not change dimensions of inputs"
+    dist_ab = pdist2(a, b).diag().sqrt().mean()
+    dist_new_ab = pdist2(new_a, new_b).diag().sqrt().mean()
+    assert dist_new_ab < dist_ab, \
+        "Procrustes alignment should make dist(a,b) smaller"
+    assert torch.allclose(pdist2(a, a), pdist2(new_a, new_a), atol=tolerance), \
+        "Procrustes should preserved pairwise dist a to a"
+    assert torch.allclose(pdist2(b, b), pdist2(new_b, new_b), atol=tolerance), \
+        "Procrustes should preserved pairwise dist b to b"
+
+    new_a, new_b = _orthogonal_procrustes(a, b, anchor="a")
+    assert new_a.shape == a.shape and new_b.shape == b.shape, \
+        "Procrustes must not change dimensions of inputs"
+    assert torch.allclose(a, new_a, atol=tolerance), \
+        "procrustes with anchor='a' should leave a unchanged"
+    dist_new_new_ab = pdist2(new_a, new_b).diag().sqrt().mean()
+    assert torch.isclose(dist_new_new_ab, dist_new_ab, atol=tolerance), \
+        "procrustes with anchor='a' dot product is different"
+    assert torch.allclose(pdist2(a, a), pdist2(new_a, new_a), atol=tolerance), \
+        "Procrustes should preserved pairwise dist a to a"
+    assert torch.allclose(pdist2(b, b), pdist2(new_b, new_b), atol=tolerance), \
+        "Procrustes should preserved pairwise dist b to b"
+
+    new_a, new_b = _orthogonal_procrustes(a, b, anchor="b")
+    assert new_a.shape == a.shape and new_b.shape == b.shape, \
+        "Procrustes must not change dimensions of inputs"
+    assert torch.allclose(b, new_b, atol=tolerance), \
+        "procrustes with anchor='b' should leave b unchanged"
+    dist_new_new_ab = pdist2(new_a, new_b).diag().sqrt().mean()
+    assert torch.isclose(dist_new_new_ab, dist_new_ab, atol=tolerance), \
+        "procrustes with anchor='b' dot product is different"
+    assert torch.allclose(pdist2(a, a), pdist2(new_a, new_a), atol=tolerance), \
+        "Procrustes should preserved pairwise dist a to a"
+    assert torch.allclose(pdist2(b, b), pdist2(new_b, new_b), atol=tolerance), \
+        "Procrustes should preserved pairwise dist b to b"
 
 
 def test_spherical_pca():

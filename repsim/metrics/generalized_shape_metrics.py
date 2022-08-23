@@ -122,17 +122,30 @@ class AngularShapeMetric(ShapeMetric):
         super(AngularShapeMetric, self).__init__(*args, score_method="angular", **kwargs)
 
 
-def _orthogonal_procrustes(a, b):
+def _orthogonal_procrustes(a, b, anchor="middle"):
     """Provided a and b, each matrices of size (m, p) that are already centered and scaled, solve the orthogonal
-    procrustest problem (rotate a and b into a common frame that minimizes distances)
+    procrustest problem (rotate a and b into a common frame that minimizes distances).
+
+    If anchor="middle" (default) then both a and b
+    If anchor="a", then a is left unchanged and b is rotated towards it
+    If anchor="b", then b is left unchanged and a is rotated towards it
 
     See https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
 
     :return: new_a, new_b the rotated versions of a and b, minimizing element-wise squared differences
     """
     u, _, v = torch.linalg.svd(a.T @ b)
-    new_a, new_b = a @ u, b @ v.T
-    return new_a, new_b
+    # Helpful trick to see how these are related: u is the inverse of u.T, and likewise v is inverse of v.T. We get to
+    # the anchor=a and anchor=b solutions by right-multiplying both return values by u.T or right-multiplying both
+    # return values by v, respectively (if both return values are rotated in the same way, it preserves the shape).
+    if anchor == "middle":
+        return a @ u, b @ v.T
+    elif anchor == "a":
+        return a, b @ v.T @ u.T
+    elif anchor == "b":
+        return a @ u @ v, b
+    else:
+        raise ValueError(f"Invalid 'anchor' argument: {anchor} (must be 'middle', 'a', or 'b')")
 
 
 def _whiten(x, alpha, clip_eigs=1e-9):
