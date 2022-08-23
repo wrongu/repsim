@@ -211,11 +211,11 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 1: result is in the tangent space of y
-    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y)), \
+    tol = 1e-3
+    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y), atol=tol, rtol=tol), \
         "map of u_x to y did not land in the tangent space of y"
 
     # Test 2: vector is unchanged by transporting there and back again
-    tol = 1e-3
     assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol, rtol=tol), \
         "reverse map did not get back to the starting u"
 
@@ -298,6 +298,24 @@ def test_riemann_angular_cka():
     metric = AngularCKA(m=BIG_M, kernel=SquaredExponential())
     pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_angular_shape():
+    metric = AngularShapeMetric(m=BIG_M, p=4)
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
+    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_euclidean_shape():
+    metric = EuclideanShapeMetric(m=BIG_M, p=4)
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
+    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
