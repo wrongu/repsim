@@ -62,8 +62,8 @@ def angle(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs) -
     if isinstance(space, RiemannianSpace):
         # Riemannian manifolds have tangent spaces and inner products that we can use to compute the angle easily
         tangent_ba, tangent_bc = space.log_map(pt_b, pt_a), space.log_map(pt_b, pt_c)
-        norm_ba = tangent_ba / torch.sqrt(space.inner_product(pt_b, tangent_ba, tangent_ba))
-        norm_bc = tangent_bc / torch.sqrt(space.inner_product(pt_b, tangent_bc, tangent_bc))
+        norm_ba = tangent_ba / space.norm(pt_b, tangent_ba)
+        norm_bc = tangent_bc / space.norm(pt_b, tangent_bc)
         cos_b = space.inner_product(pt_b, norm_ba, norm_bc)
         return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
     else:
