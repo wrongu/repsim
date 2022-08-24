@@ -212,7 +212,7 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         elif self._score_method == "angular":
             # Identical to Hypersphere.log_map but in the direction of 'new_b'
             unscaled_w = self._pre_shape_tangent(pt_a, new_b)
-            norm_w = unscaled_w / torch.sqrt(torch.sum(unscaled_w * unscaled_w))
+            norm_w = unscaled_w / torch.clip(torch.sqrt(torch.sum(unscaled_w * unscaled_w)), 1e-7)
             return norm_w * self.length(pt_a, pt_b)
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
@@ -227,7 +227,7 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
             # Refer to Hypersphere.levi_civita
             vec_v = self.log_map(pt_a, pt_b)
             angle = self.length(pt_a, pt_b)
-            unit_v = vec_v / angle  # the length of tangent vector v *is* the length from a to b
+            unit_v = vec_v / torch.clip(angle, 1e-7)  # the length of tangent vector v *is* the length from a to b
             w_along_v = torch.sum(unit_v * vec_w)
             orth_part = vec_w - w_along_v * unit_v
             return orth_part + torch.cos(angle) * w_along_v * unit_v - torch.sin(angle) * w_along_v * pt_a

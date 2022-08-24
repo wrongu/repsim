@@ -213,8 +213,12 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
     u_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
-    # Test 1: result is in the tangent space of y
+    # Test 0: transporting a vector from a to a is a no-op
     tol = 1e-3
+    u_x_again = metric.levi_civita(pt_x, pt_x, u_x)
+    assert torch.allclose(u_x, u_x_again, atol=tol, rtol=tol)
+
+    # Test 1: result is in the tangent space of y
     assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y), atol=tol, rtol=tol), \
         "map of u_x to y did not land in the tangent space of y"
 
