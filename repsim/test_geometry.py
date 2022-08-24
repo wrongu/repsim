@@ -43,6 +43,9 @@ def test_geodesic_air():
     # _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))  # FAILS but we don't need it to work
     _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
+    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, shrinkage=0.1))
+    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, shrinkage=0.1))
+
 
 def test_geodesic_air_big():
     _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
@@ -264,6 +267,13 @@ def test_riemann_hypersphere():
 
 def test_riemann_air():
     metric = AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential())
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
+    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+    metric = AffineInvariantRiemannian(m=BIG_M, shrinkage=0.1)
     pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
