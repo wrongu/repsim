@@ -41,7 +41,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         """
         if x.shape[0] != self.m:
             raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
-        return pairwise.inner_product(x, kernel=self._kernel)
+        gram_matrix = pairwise.inner_product(x, kernel=self._kernel)
+        # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
+        off_diag = 1.0 - torch.eye(self.m, device=gram_matrix.device, dtype=gram_matrix.dtype)
+        return gram_matrix - self._shrink * off_diag * gram_matrix
 
     def string_id(self) -> str:
         if self._shrink > 0.:
@@ -76,13 +79,8 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         return True
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
-        n = pt_a.size()[0]
-        # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
-        off_diag_n = 1.0 - torch.eye(n, device=pt_a.device, dtype=pt_a.dtype)
-        pt_a = pt_a - self._shrink * off_diag_n * pt_a
-        pt_b = pt_b - self._shrink * off_diag_n * pt_b
         if torch.linalg.matrix_rank(pt_a) < self.m or torch.linalg.matrix_rank(pt_b) < self.m:
-            return torch.tensor([float('inf')])
+            return torch.tensor([float('inf')], dtype=pt_a.dtype, device=pt_a.device)
         # TODO - do we need shrinkage and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
         # and therefore dist --> infinity?
         inv_a_half = _inv_matrix_sqrt(pt_a)
