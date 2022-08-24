@@ -8,7 +8,7 @@ from repsim import pairwise
 class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 
-    NOTE: given (n,d) sized inputs, this involves inverting a (n,n)-sized matrix, which might be rank-deficient. The
+    NOTE: given (m,d) sized inputs, this involves inverting a (m,m)-sized matrix, which might be rank-deficient. The
     authors of [1] got around this by switching the inner-product to be across conditions, and compared (d,d)-sized
     matrices. However, this no longer suffices as a general RSA tool, since in general d_x will not equal d_y.
 
@@ -25,7 +25,6 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def __init__(self, m, shrinkage=0.0, kernel=None):
         super().__init__(dim=m*(m+1)/2, shape=(m, m))
-        self.m = m
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
         if shrinkage < 0.0 or shrinkage > 1.0:
             raise ValueError(
@@ -38,7 +37,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     ###############################################
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (n,d) neural data to a size (n,n) Gram matrix of inner products between xs using self._kernel.
+        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
         """
         if x.shape[0] != self.m:
             raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")

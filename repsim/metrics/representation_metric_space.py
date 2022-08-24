@@ -3,7 +3,7 @@ import torch
 from repsim.geometry.manifold import LengthSpace, Point
 
 
-# Typing hints: neural data of size (n, d)
+# Typing hints: neural data of size (m, d)
 NeuralData = torch.Tensor
 
 
@@ -12,9 +12,14 @@ class RepresentationMetricSpace(LengthSpace, abc.ABC):
     subclass from both RepresentationMetricSpace and from a type of repsim.geometry.LengthSpace.
     """
 
+    @property
+    def m(self):
+        # By default, assume that self.m is the first index of self.shape. May be overridden if need be.
+        return self.shape[0]
+
     @abc.abstractmethod
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert (n,d) sized neural data into a point in the metric space, e.g. converting to an (n,n) sized RDM
+        """Convert (m,d) sized neural data into a point in the metric space, e.g. converting to an (m,m) sized RDM
         """
         pass
 

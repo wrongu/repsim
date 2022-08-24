@@ -21,7 +21,6 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
 
     def __init__(self, m, kernel=None):
         super().__init__(dim=m*(m+1)/2-1, shape=(m, m))
-        self.m = m
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
 
     ###############################################
@@ -29,7 +28,7 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     ###############################################
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (n,d) neural data to a size (n,n) Gram matrix of inner products between xs using self._kernel.
+        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
         """
         if x.shape[0] != self.shape[0]:
             raise ValueError(f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}")

@@ -21,7 +21,6 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 
     def __init__(self, m, p, alpha=1.0, score_method="euclidean"):
         super().__init__(dim=m*p, shape=(m, p))
-        self.m = m
         self.p = p
         self._alpha = alpha
         self._score_method = score_method

@@ -12,7 +12,6 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
 
     def __init__(self, m, kernel=None):
         super().__init__(dim=m*(m-1)/2, shape=(m, m))
-        self.m = m
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
 
     ###############################################
@@ -20,7 +19,7 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     ###############################################
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (n,d) neural data to a size (n,n) matrix of Euclidean distances between xs using self._kernel.
+        """Convert size (m,d) neural data to a size (m,m) matrix of Euclidean distances between xs using self._kernel.
         """
         if x.shape[0] != self.shape[0]:
             raise ValueError(f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}")
