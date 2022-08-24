@@ -42,6 +42,9 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         if x.shape[0] != self.m:
             raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
 
+        # Flatten all but first dimension. TODO optional conv reshape into (m*h*w,c) as done by Williams et al?
+        x = torch.reshape(x, (self.m, -1))
+
         # Center columns to handle translation-invariance
         x = x - torch.mean(x, dim=0)
 
