@@ -209,12 +209,16 @@ def pairwise_arc_lengths(X, center):
 
 
 def _is_arc_length_matrix(X):
+    tolerance = 1e-4
     if X.ndim != 2:
         return False
     if X.shape[0] != X.shape[1]:
         return False
     if not torch.all(X >= 0.) or not torch.all(X <= np.pi):
         return False
-    if not torch.allclose(torch.diag(X), torch.zeros_like(torch.diag(X))):
+    # The diagonal often comes from arccos(dot(a,b)), and we generally care more about precision in the dot() part.
+    # Note that arccos(0.999) = .045, which is still 'far from zero'. So instead of asserting that the diagonal is zero,
+    # we'll assert that it's as close to zero as can be expected based on 'tolerance' error in the dot() part.
+    if not torch.all(X.diag().abs() < np.arccos(1.0 - tolerance)):
         return False
     return True
