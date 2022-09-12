@@ -28,3 +28,10 @@ class RepresentationMetricSpace(LengthSpace, abc.ABC):
         """Return a string description of this metric space object, e.g. for use as a dictionary key
         """
         pass
+
+    @property
+    @abc.abstractmethod
+    def is_spherical(self) -> bool:
+        """Return True if this metric's length() is in [0,pi] and may be interpreted as an arc length on some hypersphere.
+        """
+        pass

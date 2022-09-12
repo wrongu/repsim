@@ -39,6 +39,10 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     def string_id(self) -> str:
         return f"AngularCKA.{self._kernel.string_id()}.{self.m}"
 
+    @property
+    def is_spherical(self) -> bool:
+        return True
+
     #################################
     # Implement LengthSpace methods #
     #################################

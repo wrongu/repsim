@@ -52,6 +52,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         else:
             return f"AffineInvariantRiemannian.{self._kernel.string_id()}.{self.m}"
 
+    @property
+    def is_spherical(self) -> bool:
+        return False
+
     #################################
     # Implement LengthSpace methods #
     #################################

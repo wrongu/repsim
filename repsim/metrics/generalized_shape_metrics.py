@@ -71,6 +71,10 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
     def string_id(self) -> str:
         return f"ShapeMetric[{self._alpha:.2f}][{self.p}][{self._score_method}].{self.m}"
 
+    @property
+    def is_spherical(self) -> bool:
+        return self._score_method == "angular"
+
     #################################
     # Implement LengthSpace methods #
     #################################

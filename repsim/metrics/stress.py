@@ -28,6 +28,10 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     def string_id(self) -> str:
         return f"Stress.{self._kernel.string_id()}.{self.shape[0]}"
 
+    @property
+    def is_spherical(self) -> bool:
+        return False
+
     #################################
     # Implement LengthSpace methods #
     #################################

@@ -128,6 +128,9 @@ def _test_scale_invariant_helper(m, nx, ny, metric, expect_invariant):
     scale_x_distance = metric.length(d_x_scaled, d_y)
 
     rtol, atol = 1e-4, 1e-5
+    if metric.is_spherical:
+        atol = np.arccos(1 - atol)
+
     if expect_invariant:
         assert torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
         assert torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
