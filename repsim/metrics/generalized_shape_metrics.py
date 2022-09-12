@@ -48,9 +48,6 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         # Center columns to handle translation-invariance
         x = x - torch.mean(x, dim=0)
 
-        # Rescale and (partially) whiten to handle scale-invariance, using self._alpha.
-        x = _whiten(x, self._alpha)
-
         # Pad or truncate to p dimensions
         d = prod(x.shape) // self.m
         if d > self.p:
@@ -61,6 +58,9 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
             # Pad zeros
             num_pad = self.p - d
             x = torch.hstack([x.view(self.m, d), x.new_zeros(self.m, num_pad)])
+
+        # Rescale and (partially) whiten to handle scale-invariance, using self._alpha.
+        x = _whiten(x, self._alpha)
 
         # In case of 'angular' metric only, make all point clouds unit-frobenius-norm
         if self._score_method == "angular":
