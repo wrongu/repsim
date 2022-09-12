@@ -68,7 +68,9 @@ def squared_euclidean(
     inner = inner_product(x, kernel=kernel)
     # Using ||x - y||^2 = ||x||^2 + ||y||^2 - 2 <x, y>
     xx = torch.diag(inner)
-    return xx[:, None] + xx[None, :] - 2 * inner
+    # Clip to zero, otherwise we may get values like -0.000000001 due to numerical imprecision, which become nan inside
+    # sqrt() call in euclidean()
+    return torch.clip(xx[:, None] + xx[None, :] - 2 * inner, min=0., max=None)
 
 
 def euclidean(
