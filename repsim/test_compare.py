@@ -29,13 +29,17 @@ def _test_compare_one_hot_helper(name, kwargs, m, nx, ny):
 def test_stress_random_data():
     _test_compare_random_data_helper("stress", {"kernel": Linear()}, 100, 10, 20)
     _test_compare_random_data_helper("stress", {"kernel": SquaredExponential()}, 100, 10, 20)
+    _test_compare_random_data_helper("stress", {"kernel": SquaredExponential(length_scale="median/2")}, 100, 10, 20)
     _test_compare_random_data_helper("stress", {"kernel": Laplace()}, 100, 10, 20)
+    _test_compare_random_data_helper("stress", {"kernel": Laplace(length_scale="median/2")}, 100, 10, 20)
 
 
 def test_stress_one_hot_data():
     _test_compare_one_hot_helper("stress", {"kernel": Linear()}, 100, 10, 10)
     _test_compare_one_hot_helper("stress", {"kernel": SquaredExponential()}, 100, 10, 10)
+    _test_compare_one_hot_helper("stress", {"kernel": SquaredExponential(length_scale="median/2")}, 100, 10, 10)
     _test_compare_one_hot_helper("stress", {"kernel": Laplace()}, 100, 10, 10)
+    _test_compare_one_hot_helper("stress", {"kernel": Laplace(length_scale="median/2")}, 100, 10, 10)
 
 
 def test_angular_cka_random_data():
