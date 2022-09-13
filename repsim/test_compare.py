@@ -150,7 +150,10 @@ def test_cka_scale_invariant():
 
 
 def test_stress_scale_variant():
-    _test_scale_invariant_helper(100, 10, 20, Stress(100), expect_invariant=False)
+    _test_scale_invariant_helper(100, 10, 20, Stress(100, kernel=Linear()), expect_invariant=False)
+    _test_scale_invariant_helper(100, 10, 20, Stress(100, kernel=Linear(), rescale=True), expect_invariant=True)
+    _test_scale_invariant_helper(100, 10, 20, Stress(100, kernel=SquaredExponential()), expect_invariant=True)
+    _test_scale_invariant_helper(100, 10, 20, Stress(100, kernel=Laplace()), expect_invariant=True)
 
 
 def test_riemannian_scale_invariant():
@@ -177,22 +180,27 @@ def test_shape_metric_scale_alpha_nonzero():
 def _test_scale_invariant_helper(m, nx, ny, metric, expect_invariant):
     x, y = torch.randn(m, nx), torch.randn(m, ny)
     d_x = metric.neural_data_to_point(x)
-    d_x_scaled = metric.neural_data_to_point(x * torch.randn(size=(1,)).exp())
+    d_x_halved = metric.neural_data_to_point(x * 0.5)
+    d_x_doubled = metric.neural_data_to_point(x * 2.0)
     d_y = metric.neural_data_to_point(y)
 
     base_distance = metric.length(d_x, d_y)
-    x_scale_x_distance = metric.length(d_x, d_x_scaled)
-    scale_x_distance = metric.length(d_x_scaled, d_y)
+    x_half_x_distance = metric.length(d_x, d_x_halved)
+    half_x_distance = metric.length(d_x_halved, d_y)
+    x_double_x_distance = metric.length(d_x, d_x_doubled)
+    double_x_distance = metric.length(d_x_doubled, d_y)
 
-    rtol, atol = 1e-4, 1e-5
+    rtol, atol = 1e-3, 1e-4
     if metric.is_spherical:
         atol = np.arccos(1 - atol)
 
     if expect_invariant:
-        assert torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
-        assert torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
-        assert torch.isclose(x_scale_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale invariance"
+        assert torch.isclose(base_distance, half_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
+        assert torch.isclose(base_distance, double_x_distance, rtol=rtol, atol=atol), "Failed scale invariance"
+        assert torch.isclose(x_half_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale invariance"
+        assert torch.isclose(x_double_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale invariance"
     else:
-        assert not torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale variance"
-        assert not torch.isclose(base_distance, scale_x_distance, rtol=rtol, atol=atol), "Failed scale variance"
-        assert not torch.isclose(x_scale_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale variance"
+        assert not torch.isclose(base_distance, half_x_distance, rtol=rtol, atol=atol), "Failed scale variance"
+        assert not torch.isclose(base_distance, double_x_distance, rtol=rtol, atol=atol), "Failed scale variance"
+        assert not torch.isclose(x_half_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale variance"
+        assert not torch.isclose(x_double_x_distance, torch.zeros(1), rtol=rtol, atol=atol), "Failed scale variance"

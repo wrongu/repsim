@@ -10,9 +10,10 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     """Mean squared difference in pairwise distances, AKA 'stress' from the MDS literature.
     """
 
-    def __init__(self, m, kernel=None):
+    def __init__(self, m, kernel=None, rescale=False):
         super().__init__(dim=m*(m-1)/2, shape=(m, m))
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
+        self._rescale = rescale
 
     ###############################################
     # Implement RepresentationMetricSpace methods #
@@ -23,10 +24,17 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
         """
         if x.shape[0] != self.shape[0]:
             raise ValueError(f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}")
-        return pairwise.euclidean(x, kernel=self._kernel)
+        pairwise_dist = pairwise.euclidean(x, kernel=self._kernel)
+
+        if self._rescale:
+            # When 'rescale' flag is set, pairwise distances are normalized so that their median distance is 1.
+            # This rescaling step can be used to make Stress scale-invariant even when using a Linear kernel.
+            pairwise_dist = pairwise_dist / torch.median(upper_triangle(pairwise_dist))
+
+        return pairwise_dist
 
     def string_id(self) -> str:
-        return f"Stress.{self._kernel.string_id()}.{self.shape[0]}"
+        return f"Stress.{self._kernel.string_id()}{'.scaled' if self._rescale else ''}.{self.shape[0]}"
 
     @property
     def is_spherical(self) -> bool:
