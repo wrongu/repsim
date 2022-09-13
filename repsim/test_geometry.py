@@ -11,7 +11,7 @@ from repsim.geometry.trig import angle, slerp
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-BIG_M = 10000 if torch.cuda.is_available() else 500
+BIG_M = 1000 if torch.cuda.is_available() else 100
 
 
 def _generate_data_helper(metric, n):
