@@ -311,5 +311,6 @@ def _whiten(x, alpha, clip_eigs=1e-9):
 
 
 def _solve_sylvester(a, b, q):
-    a, b, q = a.numpy(), b.numpy(), q.numpy()
-    return torch.tensor(solve_sylvester(a, b, q))
+    # TODO - implement natively in pytorch so we don't have to convert to numpy on CPU and back again
+    a_np, b_np, q_np = a.detach().cpu().numpy(), b.detach().cpu().numpy(), q.detach().cpu().numpy()
+    return torch.tensor(solve_sylvester(a_np, b_np, q_np), dtype=a.dtype, device=a.device)
