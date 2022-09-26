@@ -300,7 +300,7 @@ def _whiten(x, alpha, clip_eigs=1e-9):
 
     Assumes x is already centered.
     """
-    e, v = eigh(x.T @ x)
+    e, v = eigh(x.T @ x / len(x))
     e = torch.clip(e, min=clip_eigs, max=None)
     d = alpha + (1 - alpha) * (e ** -0.5)
     # From right to left, the transformation (1) projects x onto v, (2) divides by stdev in each direction, and (3)
