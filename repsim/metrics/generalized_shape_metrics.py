@@ -51,9 +51,9 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         # Pad or truncate to p dimensions
         d = prod(x.shape) // self.m
         if d > self.p:
-            # PCA to truncate
-            u, s, v = svd(x)
-            x = u[:, :self.p] @ torch.diag(s[:self.p]) @ v[:, :self.p][:self.p, :].T
+            # PCA to truncate -- project onto top p principal axes (no rescaling)
+            _, _, v = svd(x)
+            x = x @ v[:, :self.p]
         elif d < self.p:
             # Pad zeros
             num_pad = self.p - d
