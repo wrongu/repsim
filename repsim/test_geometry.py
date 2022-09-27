@@ -14,8 +14,8 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 BIG_M = 1000 if torch.cuda.is_available() else 100
 
 
-def _generate_data_helper(metric, n):
-    return [metric.neural_data_to_point(torch.randn(BIG_M, 100)) for _ in range(n)]
+def _generate_data_helper(metric, n, dtype=torch.float):
+    return [metric.neural_data_to_point(torch.randn(BIG_M, 100, dtype=dtype)) for _ in range(n)]
 
 
 def test_geodesic_stress():
@@ -38,13 +38,21 @@ def test_geodesic_cka_big():
     _test_geodesic_helper(BIG_M, 100, 100, AngularCKA(m=BIG_M))
 
 
-def test_geodesic_air():
+def test_geodesic_air_gram():
     _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
     # _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))  # FAILS but we don't need it to work
     _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
-    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, shrinkage=0.1))
-    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, shrinkage=0.1))
+    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, eps=0.05))
+    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, eps=0.05))
+
+
+def test_geodesic_air_cov():
+    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=3))
+    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=3))
+
+    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=5, eps=0.05))
+    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=5, eps=0.05))
 
 
 def test_geodesic_air_big():
@@ -162,13 +170,18 @@ def _test_geodesic_gradient_descent(m, nx, ny, metric):
 def _test_geodesic_log_exp_helper(metric, pt_x, pt_y):
     assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
 
-    frac, tolerance = np.random.rand(1)[0], 1e-2
+    frac = np.random.rand(1)[0]
+    tol = metric.length(pt_x, pt_y) / 1000
     pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
 
     tangent_x_to_y = metric.log_map(pt_x, pt_y)
+    pt_y_2 = metric.exp_map(pt_x, tangent_x_to_y)
+    assert metric.length(pt_y, pt_y_2) < tol, "exp(x, log(x, y)) failed to recover y"
     pt_z_2 = metric.exp_map(pt_x, frac * tangent_x_to_y)
 
     tangent_y_to_x = metric.log_map(pt_y, pt_x)
+    pt_x_2 = metric.exp_map(pt_y, tangent_y_to_x)
+    assert metric.length(pt_x, pt_x_2) < tol, "exp(y, log(y, x)) failed to recover x"
     pt_z_3 = metric.exp_map(pt_y, (1 - frac) * tangent_y_to_x)
 
     tol = metric.length(pt_x, pt_y) / 1000
@@ -189,7 +202,7 @@ def _test_inner_product_helper(metric, pt_x, pt_y):
         scale = scale / 2
         pt_z = metric.exp_map(pt_x, vec_w * scale)
 
-    assert torch.isclose(metric.length(pt_x, pt_z), scale * torch.tensor(1)), \
+    assert torch.isclose(metric.length(pt_x, pt_z), scale * torch.tensor(1, dtype=pt_x.dtype)), \
         f"Distance to exp({scale} * normed tangent vector) should be {scale}"
 
     vec_v = metric.to_tangent(pt_x, vec_w + torch.randn(vec_w.shape))
@@ -210,7 +223,7 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
 
     # Setup: map random tangent vector u from base x to base y
     dummy = metric.log_map(pt_x, pt_y)
-    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
+    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype))
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 0: transporting a vector from a to a is a no-op
@@ -233,7 +246,7 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
         "map did not preserve length of u"
 
     # Test 4: inner products are preserved by the map
-    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size()))
+    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype))
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
     dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
     dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
@@ -244,15 +257,20 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
 def _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature):
     curv = alexandrov(metric, pt_x, pt_y, pt_z)
     if expected_curvature == "positive":
-        assert curv > 0, "Expected curvature to be positive"
+        assert curv > 0, \
+            "Expected curvature to be positive"
     elif expected_curvature == "negative":
-        assert curv < 0, "Expected curvature to be positive"
+        assert curv < 0, \
+            "Expected curvature to be negative"
     elif expected_curvature == "nonnegative":
-        assert curv >= 0, "Expected curvature to be positive"
+        assert curv >= 0, \
+            "Expected curvature to be nonnegative"
     elif expected_curvature == "nonpositive":
-        assert curv <= 0, "Expected curvature to be positive"
+        assert curv <= 0, \
+            "Expected curvature to be nonpositive"
     elif expected_curvature == "zero":
-        assert torch.isclose(curv, torch.zeros(1), atol=1e-5)
+        assert torch.isclose(curv, torch.zeros(1, dtype=curv.dtype), atol=1e-5), \
+            "expected curvature to be zero"
     else:
         raise ValueError(f"Bad expected_curvature argument: {expected_curvature}")
 
@@ -269,7 +287,7 @@ def test_riemann_hypersphere():
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
 
-def test_riemann_air():
+def test_riemann_air_gram():
     metric = AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential())
     pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
@@ -277,8 +295,25 @@ def test_riemann_air():
     _test_inner_product_helper(metric, pt_x, pt_y)
     _test_parallel_transport_helper(metric, pt_x, pt_y)
 
-    metric = AffineInvariantRiemannian(m=BIG_M, shrinkage=0.1)
+    # NOTE: SOME OF THE BELOW TESTS FAIL WHEN USING SINGLE PRECISION, BUT SUCCEED WHEN USING DOUBLE PRECISION
+    metric = AffineInvariantRiemannian(m=BIG_M, eps=0.05)
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
+    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+
+def test_riemann_air_cov():
+    metric = AffineInvariantRiemannian(m=BIG_M, mode="cov", p=50)
     pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
+    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
+    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
+    _test_inner_product_helper(metric, pt_x, pt_y)
+    _test_parallel_transport_helper(metric, pt_x, pt_y)
+
+    metric = AffineInvariantRiemannian(m=BIG_M, mode="cov", p=101, eps=.01)
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
@@ -415,8 +450,9 @@ def test_stress_contains():
     _test_contains_helper(Stress(100), 100, 10)
 
 
-def test_affine_invariant_riemannian_contains():
+def test_air_contains():
     _test_contains_helper(AffineInvariantRiemannian(100, kernel=SquaredExponential()), 100, 10)
+    _test_contains_helper(AffineInvariantRiemannian(100, mode="cov", p=15), 100, 10)
 
 
 def test_angular_shape_contains():

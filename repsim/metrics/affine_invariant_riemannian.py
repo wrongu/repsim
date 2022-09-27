@@ -1,8 +1,11 @@
 import torch
+from torch.linalg import svd
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.kernels import DEFAULT_KERNEL
 from repsim import pairwise
+from repsim.util import prod
+import warnings
 
 
 class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
@@ -13,44 +16,78 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     matrices. However, this no longer suffices as a general RSA tool, since in general d_x will not equal d_y.
 
     We get around this one of two ways. First, using a kernel with an infinite basis all but guarantees invertability.
-    Second, we can regularize the n by n matrix, shrinking it towards its diagonal [2]. The latter breaks some affine
-    invariance properties, though, and should be avoided.
+    However, if some neural data contains duplicate rows (e.g. one-hot labels), then the resulting Gram matrix will
+    still be rank-deficient. Second, we regularize the m by m Gram matrix by emphasizing its diagonal (adding eps times
+    the identity matrix). Note that these regularization methods mean that the resulting metric may not actually be
+    affine-invariant!
 
     [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
         representations in brain and in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
-    [2] Yatsenko, D., Josić, K., Ecker, A. S., Froudarakis, E., Cotton, R. J., & Tolias, A. S. (2015). Improved
-        Estimation and Interpretation of Correlations in Neural Circuits. PLoS Computational Biology, 11(3), 1–28.
-        https://doi.org/10.1371/journal.pcbi.1004083
     """
 
-    def __init__(self, m, shrinkage=0.0, kernel=None):
-        super().__init__(dim=m*(m+1)/2, shape=(m, m))
+    def __init__(self, m, eps=0.0, *, kernel=None, p=None, mode="gram"):
+        if mode == "gram":
+            super().__init__(dim=m*(m+1)/2, shape=(m, m))
+            if p is not None:
+                warnings.warn("Parameter 'p' has no effect when mode='gram'")
+        elif mode == "cov":
+            if p is None:
+                raise ValueError("Parameter 'p' is required when mode is 'cov'")
+            super().__init__(dim=p*(p+1)/2, shape=(p, p))
+            if kernel is not None:
+                warnings.warn("Parameter 'kernel' has no effect when mode='cov'")
+        else:
+            raise ValueError(f"'mode' argument must be 'gram' or 'cov' but was {mode}")
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
-        if shrinkage < 0.0 or shrinkage > 1.0:
-            raise ValueError(
-                "Shrinkage parameter must be in [0,1], where 0 means no regularization."
-            )
-        self._shrink = shrinkage
+        if eps < 0.0:
+            raise ValueError(f"eps regularization must be nonnegative but is {eps}")
+        self._eps = eps
+        self._mode = mode
+        self._p = p
+        self._m = m
 
     ###############################################
     # Implement RepresentationMetricSpace methods #
     ###############################################
+    @property
+    def m(self):
+        return self._m
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
         """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
         """
         if x.shape[0] != self.m:
             raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
-        gram_matrix = pairwise.inner_product(x, kernel=self._kernel)
-        # Apply shrinkage regularizer: down-weight all off-diagonal parts of each RSM by self._shrink.
-        off_diag = 1.0 - torch.eye(self.m, device=gram_matrix.device, dtype=gram_matrix.dtype)
-        return gram_matrix - self._shrink * off_diag * gram_matrix
+        if self._mode == "gram":
+            gram_matrix = pairwise.inner_product(x, kernel=self._kernel)
+            # Apply regularizer: add a small ridge to the diagonal
+            return gram_matrix + self._eps * torch.eye(self.m, device=x.device, dtype=x.dtype)
+        elif self._mode == "cov":
+            # Flatten all but first dimension.
+            x = torch.reshape(x, (self.m, -1))
+            # Center columns to handle translation-invariance
+            x = x - torch.mean(x, dim=0)
+            # Pad or truncate to p dimensions
+            d = prod(x.shape) // self.m
+            if d > self._p:
+                # PCA to truncate -- project onto top p principal axes (no rescaling)
+                _, _, v = svd(x)
+                x = x @ v[:, :self._p]
+            elif d < self._p:
+                # Pad zeros
+                num_pad = self._p - d
+                x = torch.hstack([x.view(self.m, d), x.new_zeros(self.m, num_pad)])
+            # Compute covariance
+            cov_matrix = torch.einsum('mi,mj->ij', x, x) / (self.m - 1)
+            # Apply regularizer: add small ridge
+            return cov_matrix + self._eps * torch.eye(self._p, device=x.device, dtype=x.dtype)
 
     def string_id(self) -> str:
-        if self._shrink > 0.:
-            return f"AffineInvariantRiemannian[{self._shrink:.3f}].{self._kernel.string_id()}.{self.m}"
-        else:
-            return f"AffineInvariantRiemannian.{self._kernel.string_id()}.{self.m}"
+        eps_str = "" if self._eps == 0.0 else f"[{self._eps:.3f}]"
+        if self._mode == "gram":
+            return f"AffineInvariantRiemannian[gram]{eps_str}.{self._kernel.string_id()}.{self.m}"
+        elif self._mode == "cov":
+            return f"AffineInvariantRiemannian[cov]{eps_str}[{self._p}].{self.m}"
 
     @property
     def is_spherical(self) -> bool:
@@ -61,8 +98,8 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _project_impl(self, pt: Point) -> Point:
-        assert pt.shape == (self.m, self.m), \
-            f"Input to AngularCKA.project() must be a m by m matrix but is size {pt.shape}!"
+        assert pt.shape == self.shape, \
+            f"Input to AffineInvariantRiemannian.project() must be a {self.shape} matrix but is size {pt.shape}!"
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         # 2. Ensure matrix is positive definite by clipping its eigenvalues
@@ -71,7 +108,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def _contains_impl(self, pt: Point, atol: float = 1e-6) -> bool:
         # Test shape
-        if pt.shape != (self.m, self.m):
+        if pt.shape != self.shape:
             return False
         # Test symmetric
         if not torch.allclose(pt, pt.T, atol=atol):
@@ -83,9 +120,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         return True
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
-        if torch.linalg.matrix_rank(pt_a) < self.m or torch.linalg.matrix_rank(pt_b) < self.m:
+        # If rank-deficient, return infinity and be done early
+        if torch.linalg.matrix_rank(pt_a) < self.shape[0] or torch.linalg.matrix_rank(pt_b) < self.shape[0]:
             return torch.tensor([float('inf')], dtype=pt_a.dtype, device=pt_a.device)
-        # TODO - do we need shrinkage and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
+        # TODO - do we need eps and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
         # and therefore dist --> infinity?
         inv_a_half = _inv_matrix_sqrt(pt_a)
         x_inv_y = inv_a_half @ pt_b @ inv_a_half

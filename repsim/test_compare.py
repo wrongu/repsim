@@ -60,6 +60,9 @@ def test_riemannian_random_data():
     _test_compare_random_data_helper("affine_invariant_riemannian", {"kernel": Laplace()}, 100, 10, 20)
     # Include a case where nx and ny > m with a Linear kernel
     _test_compare_random_data_helper("affine_invariant_riemannian", {"kernel": Linear()}, 10, 20, 20)
+    _test_compare_random_data_helper("affine_invariant_riemannian", {"mode": "cov", "p": 15}, 100, 10, 10)
+    _test_compare_random_data_helper("affine_invariant_riemannian", {"mode": "cov", "p": 15}, 100, 20, 20)
+    _test_compare_random_data_helper("affine_invariant_riemannian", {"mode": "cov", "p": 15}, 100, 10, 20)
 
 
 def test_riemannian_one_hot_data():
@@ -68,6 +71,8 @@ def test_riemannian_one_hot_data():
     _test_compare_one_hot_helper("affine_invariant_riemannian", {"kernel": Laplace()}, 100, 10, 10)
     # Include a case where nx and ny > m with a Linear kernel
     _test_compare_one_hot_helper("affine_invariant_riemannian", {"kernel": Linear()}, 10, 20, 20)
+    _test_compare_one_hot_helper("affine_invariant_riemannian", {"mode": "cov", "p": 15}, 100, 10, 10)
+    _test_compare_one_hot_helper("affine_invariant_riemannian", {"mode": "cov", "p": 15}, 100, 20, 20)
 
 
 def test_euclidean_shape_metric_random_data():
@@ -143,7 +148,7 @@ def test_euclidean_shape_metric_points():
 
 def test_riemmannian_rank_deficient_inf_distance():
     x, y = torch.randn(10, 4), torch.randn(10, 3)
-    unregularized = AffineInvariantRiemannian(m=10, shrinkage=0.0)
+    unregularized = AffineInvariantRiemannian(m=10, eps=0.0)
     # We expect the unregularized method to fail when x,y have more rows than columns.
     # (Note that in @test_compare_random_data above, specifying method="riemannian" defaults to a regularized version)
     assert torch.isinf(compare(x, y, method=unregularized, kernel_x=Linear(), kernel_y=Linear()))

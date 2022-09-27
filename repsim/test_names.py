@@ -8,10 +8,13 @@ def test_names():
     assert metric.string_id() == "AngularCKA.Linear.1000"
 
     metric = AffineInvariantRiemannian(m=1000)
-    assert metric.string_id() == "AffineInvariantRiemannian.Linear.1000"
+    assert metric.string_id() == "AffineInvariantRiemannian[gram].Linear.1000"
 
-    metric = AffineInvariantRiemannian(m=1000, shrinkage=0.1)
-    assert metric.string_id() == "AffineInvariantRiemannian[0.100].Linear.1000"
+    metric = AffineInvariantRiemannian(m=1000, eps=0.05)
+    assert metric.string_id() == "AffineInvariantRiemannian[gram][0.050].Linear.1000"
+
+    metric = AffineInvariantRiemannian(m=1000, eps=0.05, mode="cov", p=100)
+    assert metric.string_id() == "AffineInvariantRiemannian[cov][0.050][100].1000"
 
     metric = Stress(m=1000)
     assert metric.string_id() == "Stress.Linear.1000"
@@ -21,7 +24,7 @@ def test_names():
     assert metric.string_id() == "AngularCKA.SqExp[auto].1000"
 
     metric = AffineInvariantRiemannian(m=1000, kernel=SquaredExponential())
-    assert metric.string_id() == "AffineInvariantRiemannian.SqExp[auto].1000"
+    assert metric.string_id() == "AffineInvariantRiemannian[gram].SqExp[auto].1000"
 
     metric = Stress(m=1000, kernel=SquaredExponential())
     assert metric.string_id() == "Stress.SqExp[auto].1000"
@@ -31,7 +34,7 @@ def test_names():
     assert metric.string_id() == "AngularCKA.SqExp[0.300].100"
 
     metric = AffineInvariantRiemannian(m=100, kernel=SquaredExponential(length_scale=0.3))
-    assert metric.string_id() == "AffineInvariantRiemannian.SqExp[0.300].100"
+    assert metric.string_id() == "AffineInvariantRiemannian[gram].SqExp[0.300].100"
 
     metric = Stress(m=100, kernel=SquaredExponential(length_scale=0.3))
     assert metric.string_id() == "Stress.SqExp[0.300].100"
