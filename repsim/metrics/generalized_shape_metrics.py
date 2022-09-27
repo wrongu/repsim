@@ -168,7 +168,11 @@ class ShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         """
         vec_w = self._pre_shape_tangent(pt_a, vec_w)
         vert_part = self._vertical_tangent(pt_a, vec_w)
-        return vec_w - vert_part * torch.sum(vec_w * vert_part) / torch.sum(vert_part * vert_part)
+        square_vert_norm = torch.sum(vert_part * vert_part)
+        if square_vert_norm > 1e-9:
+            return vec_w - vert_part * torch.sum(vec_w * vert_part) / square_vert_norm
+        else:
+            return vec_w
 
     def _vertical_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
         """The 'vertical' part of the tangent space is the part that doesn't count as movement in the quotient space,
