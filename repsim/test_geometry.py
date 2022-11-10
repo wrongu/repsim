@@ -5,7 +5,7 @@ from repsim.kernels import SquaredExponential
 from repsim.geometry import LengthSpace, GeodesicLengthSpace, RiemannianSpace
 from repsim.geometry.hypersphere import HyperSphere
 from repsim.geometry.curvature import alexandrov
-from repsim.geometry.optimize import OptimResult, project_by_binary_search
+from repsim.geometry.optimize import OptimResult, project_by_binary_search, project_by_tangent_iteration
 from repsim.geometry.trig import angle, slerp
 
 
@@ -193,27 +193,30 @@ def _test_inner_product_helper(metric, pt_x, pt_y):
     assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
 
     vec_w = metric.log_map(pt_x, pt_y)
-    vec_w = vec_w / metric.norm(pt_x, vec_w)
+    norm_vec_w = vec_w / metric.norm(pt_x, vec_w)
 
-    # Note: it can happen (esp. with Stress) where exp_map(pt_x, vec_w) lands outside of the constraints. We would like
-    # to assert that length(pt_x, exp_map(pt_x, vec_w))==1., but loop here in case exp_map goes out of bounds.
-    scale, pt_z = 1.0, metric.exp_map(pt_x, vec_w)
+    assert torch.isclose(metric.length(pt_x, pt_y), metric.norm(pt_x, vec_w)), \
+        "Norm of tangent != length from x to y"
+
+    # Note: it can happen (esp. with Stress) where exp_map(pt_x, norm_vec_w) lands outside of the constraints. We would like
+    # to assert that length(pt_x, exp_map(pt_x, norm_vec_w))==1., but loop here in case exp_map goes out of bounds.
+    scale, pt_z = 1.0, metric.exp_map(pt_x, norm_vec_w)
     while not metric.contains(pt_z):
         scale = scale / 2
-        pt_z = metric.exp_map(pt_x, vec_w * scale)
+        pt_z = metric.exp_map(pt_x, norm_vec_w * scale)
 
     assert torch.isclose(metric.length(pt_x, pt_z), scale * torch.tensor(1, dtype=pt_x.dtype)), \
         f"Distance to exp({scale} * normed tangent vector) should be {scale}"
 
-    vec_v = metric.to_tangent(pt_x, vec_w + torch.randn(vec_w.shape))
+    vec_v = metric.to_tangent(pt_x, norm_vec_w + torch.randn(norm_vec_w.shape))
     vec_v = vec_v / metric.norm(pt_x, vec_v)
-    dot_wv = metric.inner_product(pt_x, vec_w, vec_v)
-    dot_vw = metric.inner_product(pt_x, vec_w, vec_v)
+    dot_wv = metric.inner_product(pt_x, norm_vec_w, vec_v)
+    dot_vw = metric.inner_product(pt_x, norm_vec_w, vec_v)
     assert torch.isclose(dot_wv, dot_vw), \
         "inner_product should be symmetric!"
 
     scale_w, scale_v = torch.rand(2)
-    assert torch.isclose(scale_w * scale_v * dot_wv, metric.inner_product(pt_x, scale_w * vec_w, scale_v * vec_v)), \
+    assert torch.isclose(scale_w * scale_v * dot_wv, metric.inner_product(pt_x, scale_w * norm_vec_w, scale_v * vec_v)), \
         "inner_product should scale output with scale of inputs (bilinear)!"
 
 
@@ -223,7 +226,7 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
 
     # Setup: map random tangent vector u from base x to base y
     dummy = metric.log_map(pt_x, pt_y)
-    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype))
+    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype) / np.sqrt(dummy.numel()))
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 0: transporting a vector from a to a is a no-op
@@ -354,7 +357,7 @@ def test_riemann_angular_cka():
 
 def test_riemann_angular_shape():
     metric = AngularShapeMetric(m=BIG_M, p=4)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
+    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
     _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
     _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
     _test_inner_product_helper(metric, pt_x, pt_y)
@@ -371,48 +374,60 @@ def test_riemann_euclidean_shape():
 
 
 def test_projection_stress():
-    _test_projection_helper(5, 3, 4, 4, Stress(m=5))
+    _test_projection_by_binary_search_helper(5, 3, 4, 4, Stress(m=5))
+    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, Stress(m=5))
 
 
 def test_projection_stress_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, Stress(m=BIG_M))
+    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, Stress(m=BIG_M))
+    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, Stress(m=BIG_M))
 
 
 def test_projection_cka():
-    _test_projection_helper(5, 3, 4, 4, AngularCKA(m=5))
+    _test_projection_by_binary_search_helper(5, 3, 4, 4, AngularCKA(m=5))
+    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, AngularCKA(m=5))
 
 
 def test_projection_cka_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, AngularCKA(m=BIG_M))
+    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AngularCKA(m=BIG_M))
+    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AngularCKA(m=BIG_M))
 
 
 def test_projection_riemann():
-    _test_projection_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
+    _test_projection_by_binary_search_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
+    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
 
 
 def test_projection_riemann_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
+    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
+    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
 
 
 def test_projection_angular_shape():
-    _test_projection_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
-    _test_projection_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
+    _test_projection_by_binary_search_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
+    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
+    _test_projection_by_binary_search_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
+    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
 
 
 def test_projection_angular_shape_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
+    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
+    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
 
 
 def test_projection_euclidean_shape():
-    _test_projection_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
-    _test_projection_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
+    _test_projection_by_binary_search_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
+    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
+    _test_projection_by_binary_search_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
+    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
 
 
 def test_projection_euclidean_shape_big():
-    _test_projection_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
+    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
+    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
 
 
-def _test_projection_helper(m, nx, ny, nz, metric):
+def _test_projection_by_binary_search_helper(m, nx, ny, nz, metric):
     x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
     pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
 
@@ -440,6 +455,38 @@ def _test_projection_helper(m, nx, ny, nz, metric):
         geo_dist = metric.length(pt_z, geo_pt)
         assert metric.length(pt_z, proj) < geo_dist + tolerance, \
             f"length(z, proj) > length(z, geodesic({i/10:.2}))"
+
+
+def _test_projection_by_tangent_iteration_helper(m, nx, ny, nz, metric):
+    x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
+    pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
+
+    tolerance = 1e-4
+    proj, converged = project_by_tangent_iteration(metric, pt_x, pt_y, pt_z, tol=tolerance / 2)
+    dist_xy = metric.length(pt_x, pt_y)
+    dist_xp = metric.length(pt_x, proj)
+    dist_py = metric.length(proj, pt_y)
+
+    assert converged == OptimResult.CONVERGED, \
+        f"Projected point failed to converge using {metric}: {proj}"
+    assert metric.contains(proj, atol=tolerance), \
+        f"Projected point failed contains() test using {metric}, {metric}"
+    assert np.isclose(dist_xy, dist_xp + dist_py, atol=tolerance), \
+        f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+
+    frac = np.random.rand(1)[0]
+    pt_geo = metric.geodesic(pt_x, pt_y, frac)
+    pt_geo_projected, _ = project_by_tangent_iteration(metric, pt_x, pt_y, pt_geo, tol=tolerance / 2)
+    assert metric.length(pt_geo, pt_geo_projected) < tolerance, \
+        "Projection of a point on the geodesic failed to recover that same point"
+
+    a = angle(metric, pt_x, proj, pt_y).item()
+    # Angle should be pi or zero depending on if proj landed between xy or outside of them
+    if a < np.pi / 2:
+        assert np.abs(angle) < np.arccos(tolerance)
+    else:
+        assert np.abs(a - np.pi) < np.arccos(tolerance)
+
 
 
 def test_angular_cka_contains():

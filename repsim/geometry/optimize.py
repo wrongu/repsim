@@ -1,11 +1,12 @@
 import enum
 import torch
+import numpy as np
 from typing import Callable, Tuple
 
 # Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from repsim.geometry import LengthSpace, Point, Scalar
+    from repsim.geometry import LengthSpace, RiemannianSpace, Point, Scalar
 
 from repsim.geometry.geodesic import midpoint
 
@@ -14,6 +15,7 @@ class OptimResult(enum.Enum):
     CONVERGED = 0
     MAX_STEPS_REACHED = 1
     CONDITIONS_VIOLATED = 2
+    ILL_POSED = 3
     NO_OPT_NEEDED = 0
 
 
@@ -101,6 +103,9 @@ def project_by_binary_search(space: "LengthSpace",
     """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the geodesic that
     connects pt_a to pt_b.
 
+    Note: because this *subdivides* the geodesic, it can only interpolate between pt_a and pt_b not extrapolate. If
+    extrapolation is required, use project_by_tangent_iteration
+
     :param space: a LengthSpace defining the metric and geodesic
     :param pt_a: start point of the geodesic
     :param pt_b: end point of the geodesic
@@ -159,3 +164,54 @@ def project_by_binary_search(space: "LengthSpace",
                                         dist_a_c=dist_mid_c,
                                         dist_c_b=dist_c_b,
                                         max_recurse=max_recurse - 1)
+
+
+def project_by_tangent_iteration(space: "RiemannianSpace",
+                             pt_a: "Point",
+                             pt_b: "Point",
+                             pt_c: "Point",
+                             *,
+                             tol=1e-6,
+                             max_iterations=100) -> Tuple["Point", OptimResult]:
+    """Find 'projection' of pt_c onto a geodesic that spans (pt_a, pt_b) by iteratively nudging pt_a towards or away
+    from pt_b until (pt_a, pt_c) is orthogonal to (pt_a, pt_b)
+
+    Note: resulting point may be extrapolated outside of the (a, b) interval
+
+    :param space: a RiemannianSpace defining the metric and geodesic.
+    :param pt_a: start point of the geodesic
+    :param pt_b: end point of the geodesic
+    :param pt_c: point to be projected
+    :param tol: declare convergence once inner-product of tangent vectors is within 'tol' of zero
+    :param max_iterations: max iterations
+    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
+    from pt_a to pt_x is minimized
+    """
+
+    dist_ab = space.length(pt_a, pt_b)
+
+    # Break-early if pt_a and pt_b are equivalent (note that this does not mean they are 'identical'). Return
+    # a midpoint between a and b and flag result as ill-posed, since we don't have a good sense of the 'direction' from
+    # a to b and therefore no good sense of how to extrapolate the geodesic
+    if dist_ab < tol:
+        return midpoint(space, pt_a, pt_b), OptimResult.ILL_POSED
+
+    projected_lengths = []
+    proj, tangent_ab_norm, t = pt_a.clone(), space.log_map(pt_a, pt_b) / dist_ab, 0.0
+    for itr in range(max_iterations):
+        # Get inner-product between (p, c) vector and (a, b) after transporting the first back to a
+        tangent_pc = space.log_map(proj, pt_c)
+        tangent_pc_at_a = space.levi_civita(proj, pt_a, tangent_pc)
+        length_pc_along_ab = space.inner_product(pt_a, tangent_pc_at_a, tangent_ab_norm)
+        if torch.isnan(length_pc_along_ab):
+            print("WTF: NaN")
+        if len(projected_lengths) >= 2 and np.abs(projected_lengths[-1]) - np.abs(projected_lengths[-2]) > 0:
+            print("WTF: growing")
+        projected_lengths.append(length_pc_along_ab.item())
+        # If length of step size is less than tol, declare convergence
+        if torch.abs(length_pc_along_ab) < tol:
+            return proj, OptimResult.CONVERGED
+        # Get new value for pt_a by moving 'length_ac_along_ab' distance in the ab direction, which may be negative
+        t = t + length_pc_along_ab
+        proj = space.exp_map(pt_a, t * tangent_ab_norm)
+    return pt_a, OptimResult.MAX_STEPS_REACHED
