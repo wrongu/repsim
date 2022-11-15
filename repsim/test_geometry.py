@@ -249,7 +249,7 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
         "map did not preserve length of u"
 
     # Test 4: inner products are preserved by the map
-    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype))
+    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype) / np.sqrt(dummy.numel()))
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
     dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
     dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
