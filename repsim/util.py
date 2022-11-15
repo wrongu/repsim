@@ -59,3 +59,34 @@ def prod(values):
     for v in values:
         out *= v
     return out
+
+
+def eig_fun(hmat, fun):
+    """Apply a function to the eigenvalues of a symmetric (hermitian) matrix
+    """
+    e, u = torch.linalg.eigh(hmat)
+    return u @ torch.diag(fun(e)) @ u.T
+
+
+def inv_matrix(hmat):
+    return eig_fun(hmat, fun=lambda x: 1. / x)
+
+
+def matrix_sqrt(hmat):
+    return eig_fun(hmat, fun=torch.sqrt)
+
+
+def inv_matrix_sqrt(hmat):
+    return eig_fun(hmat, fun=lambda x: 1. / torch.sqrt(x))
+
+
+def matrix_log(hmat):
+    return eig_fun(hmat, fun=torch.log)
+
+
+def matrix_exp(hmat):
+    return eig_fun(hmat, fun=torch.exp)
+
+
+def matrix_pow(hmat, p):
+    return eig_fun(hmat, fun=lambda e: torch.pow(e, p))

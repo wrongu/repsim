@@ -4,7 +4,8 @@ from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.kernels import DEFAULT_KERNEL
 from repsim import pairwise
-from repsim.util import prod
+from repsim.util import prod, eig_fun, inv_matrix, matrix_sqrt, inv_matrix_sqrt, matrix_log, matrix_exp, \
+    matrix_pow
 import warnings
 
 
@@ -103,7 +104,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         # 2. Ensure matrix is positive definite by clipping its eigenvalues
-        pt = _eig_fun(pt, lambda e: torch.clip(e, min=0., max=None))
+        pt = eig_fun(pt, lambda e: torch.clip(e, min=0., max=None))
         return pt
 
     def _contains_impl(self, pt: Point, atol: float = 1e-6) -> bool:
@@ -125,7 +126,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
             return torch.tensor([float('inf')], dtype=pt_a.dtype, device=pt_a.device)
         # TODO - do we need eps and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
         # and therefore dist --> infinity?
-        inv_a_half = _inv_matrix_sqrt(pt_a)
+        inv_a_half = inv_matrix_sqrt(pt_a)
         x_inv_y = inv_a_half @ pt_b @ inv_a_half
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
         return torch.sqrt(torch.sum(log_eigs**2))
@@ -135,8 +136,8 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     #########################################
 
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
-        a_half = _matrix_sqrt(pt_a)
-        inv_a_half = _inv_matrix_sqrt(pt_a)
+        a_half = matrix_sqrt(pt_a)
+        inv_a_half = inv_matrix_sqrt(pt_a)
         # See equations (3.12) and (3.13) in [1]. Here we combine them and simplify a bit algebraically.
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
         # in Medical Image Analysis. Elsevier Ltd. https://doi.org/10.1016/B978-0-12-814725-2.00010-8
@@ -147,7 +148,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         # Medium version:
         #   return a_half @ _matrix_exp(frac * _matrix_log(inv_a_half @ pt_b @ inv_a_half)) @ a_half
         # Short version:
-        return a_half @ _matrix_pow(inv_a_half @ pt_b @ inv_a_half, frac) @ a_half
+        return a_half @ matrix_pow(inv_a_half @ pt_b @ inv_a_half, frac) @ a_half
 
     #####################################
     # Implement RiemannianSpace methods #
@@ -158,62 +159,31 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         return (vec_w + vec_w.T) / 2
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
-        inv_base_point = _inv_matrix(pt_a)
+        inv_base_point = inv_matrix(pt_a)
         return torch.einsum('ij,ji->', inv_base_point @ vec_w, inv_base_point @ vec_v)
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # See equation (3.12) in [1].
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
-        a_half = _matrix_sqrt(pt_a)
-        inv_a_half = _inv_matrix_sqrt(pt_a)
-        return a_half @ _matrix_exp(inv_a_half @ vec_w @ inv_a_half) @ a_half
+        a_half = matrix_sqrt(pt_a)
+        inv_a_half = inv_matrix_sqrt(pt_a)
+        return a_half @ matrix_exp(inv_a_half @ vec_w @ inv_a_half) @ a_half
 
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
         # See equation (3.13) in [1].
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
-        a_half = _matrix_sqrt(pt_a)
-        inv_a_half = _inv_matrix_sqrt(pt_a)
-        return a_half @ _matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
+        a_half = matrix_sqrt(pt_a)
+        inv_a_half = inv_matrix_sqrt(pt_a)
+        return a_half @ matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # See equation (3.15) in [1].
         # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
         # vec_v = self.log_map(pt_a, pt_b)
         # return -1/2*(vec_v @ torch.linalg.solve(pt_a, vec_w) + vec_w @ torch.linalg.solve(pt_a, vec_v))
-        a_half = _matrix_sqrt(pt_a)
-        inv_a_half = _inv_matrix_sqrt(pt_a)
-        e = a_half @ _matrix_sqrt(inv_a_half @ pt_b @ inv_a_half) @ inv_a_half
+        a_half = matrix_sqrt(pt_a)
+        inv_a_half = inv_matrix_sqrt(pt_a)
+        e = a_half @ matrix_sqrt(inv_a_half @ pt_b @ inv_a_half) @ inv_a_half
         # Include to_tangent() to be absolutely sure the output lands in the tangent space of pt_b despite numerical
         # imprecision
         return self.to_tangent(pt_b, e @ vec_w @ e.T)
-
-
-def _eig_fun(hmat, fun):
-    """Apply a function to the eigenvalues of a symmetric (hermitian) matrix
-    """
-    e, u = torch.linalg.eigh(hmat)
-    return u @ torch.diag(fun(e)) @ u.T
-
-
-def _inv_matrix(hmat):
-    return _eig_fun(hmat, fun=lambda x: 1. / x)
-
-
-def _matrix_sqrt(hmat):
-    return _eig_fun(hmat, fun=torch.sqrt)
-
-
-def _inv_matrix_sqrt(hmat):
-    return _eig_fun(hmat, fun=lambda x: 1. / torch.sqrt(x))
-
-
-def _matrix_log(hmat):
-    return _eig_fun(hmat, fun=torch.log)
-
-
-def _matrix_exp(hmat):
-    return _eig_fun(hmat, fun=torch.exp)
-
-
-def _matrix_pow(hmat, p):
-    return _eig_fun(hmat, fun=lambda e: torch.pow(e, p))
