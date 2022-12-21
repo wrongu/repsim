@@ -26,6 +26,7 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
             raise ValueError(f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}")
         pairwise_dist = pairwise.euclidean(x, kernel=self._kernel)
 
+        # TODO - we should treat Stress as a spherical metric when _rescale=True since this acts as a constraint
         if self._rescale:
             # When 'rescale' flag is set, pairwise distances are normalized so that their median distance is 1.
             # This rescaling step can be used to make Stress scale-invariant even when using a Linear kernel.
@@ -45,7 +46,7 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
-        # Override DistMatrix.length, using instead mean squared difference in distances from upper-triangle of RDMs
+        # sqrt of mean squared difference (euclidean, scaled by 2/m(m-1)) in distances from upper-triangle of RDMs
         diff_in_dist = upper_triangle(pt_a - pt_b)
         return torch.sqrt(torch.mean(diff_in_dist**2))
 
@@ -83,7 +84,7 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     #####################################
 
     def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
-        # Find the nearest matrix to vec_w that is symmetric and has zero diagonal
+        # Find the nearest matrix to vec_w - in the Frobenius sense - that is symmetric and has zero diagonal
         return (vec_w + vec_w.T) / 2 * (1. - torch.eye(self.m))
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
