@@ -1,6 +1,8 @@
 (Metric) Representational Similarity Analysis in PyTorch
 ========================================================
 
+![](https://github.com/wrongu/repsim/actions/workflows/tests.yml/badge.svg)
+
 This repository provides the `repsim` package for comparing representational similarity in PyTorch.
 
 See [rsatoolbox](https://github.com/rsagroup/rsatoolbox) for a more mature and fully-featured toolbox, or 
