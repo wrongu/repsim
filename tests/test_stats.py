@@ -5,28 +5,24 @@ from repsim.geometry.trig import angle
 from repsim.stats import SphericalMDS, ManifoldPCA
 from repsim.metrics.generalized_shape_metrics import _orthogonal_procrustes
 from repsim.util import pdist2
+import pytest
 
 
-def test_project():
-    _test_project_helper(2)
-    _test_project_helper(10)
+@pytest.fixture(params=[2, 5, 10])
+def sphere_dim(request):
+    return request.param
 
 
-def _test_project_helper(d):
-    sphere = HyperSphere(dim=d)
-    pt = sphere.project(torch.randn(d+1))
+def test_project(sphere_dim):
+    sphere = HyperSphere(dim=sphere_dim)
+    pt = sphere.project(torch.randn(sphere_dim+1))
     assert sphere.contains(pt)
 
 
-def test_geodesic():
-    _test_geodesic_helper(2)
-    _test_geodesic_helper(10)
-
-
-def _test_geodesic_helper(d):
-    sphere = HyperSphere(dim=d)
-    pt_a = sphere.project(torch.randn(d+1))
-    pt_b = sphere.project(torch.randn(d+1))
+def test_hypersphere_geodesic(sphere_dim):
+    sphere = HyperSphere(dim=sphere_dim)
+    pt_a = sphere.project(torch.randn(sphere_dim+1))
+    pt_b = sphere.project(torch.randn(sphere_dim+1))
     t = torch.rand(1).item()
 
     pt_c = sphere.geodesic(pt_a, pt_b, t)
@@ -42,15 +38,10 @@ def _test_geodesic_helper(d):
     assert torch.isclose(a, torch.tensor([np.pi]), atol=1e-3)
 
 
-def test_log_exp():
-    _test_log_exp_helper(2)
-    _test_log_exp_helper(10)
-
-
-def _test_log_exp_helper(d):
-    sphere = HyperSphere(dim=d)
-    pt_a = sphere.project(torch.randn(d+1))
-    pt_b = sphere.project(torch.randn(d+1))
+def test_hypersphere_log_exp_maps(sphere_dim):
+    sphere = HyperSphere(dim=sphere_dim)
+    pt_a = sphere.project(torch.randn(sphere_dim+1))
+    pt_b = sphere.project(torch.randn(sphere_dim+1))
 
     log_ab = sphere.log_map(pt_a, pt_b)
     assert torch.allclose(log_ab, sphere.to_tangent(pt_a, log_ab)), \
@@ -63,14 +54,12 @@ def _test_log_exp_helper(d):
         "exp(a, log(a, b)) does not return pt_b"
 
 
-def test_spherical_mds():
-    _test_spherical_mds_helper(2, 2, 10, None, None)
-    _test_spherical_mds_helper(2, 2, 10, 2, None)
-    _test_spherical_mds_helper(10, 10, 100, 4, 10)
-    _test_spherical_mds_helper(10, 2, 10, 2, None)
-
-
-def _test_spherical_mds_helper(true_d, fit_d, n, n_jobs, max_inner_loop):
+@pytest.mark.parametrize("true_d, fit_d, n, n_jobs, max_inner_loop",
+                         [(2, 2, 10, None, None),
+                          (2, 2, 10, 2, None),
+                          (10, 10, 100, 4, 10),
+                          (10, 2, 10, 2, None)])
+def test_spherical_mds(true_d, fit_d, n, n_jobs, max_inner_loop):
     sphere = HyperSphere(dim=true_d)
     points = torch.stack([sphere.project(torch.randn(true_d+1)) for _ in range(n)], dim=0)
     mds = SphericalMDS(dim=fit_d, n_jobs=n_jobs, max_inner_loop=max_inner_loop)
@@ -125,13 +114,11 @@ def test_procrustes():
         "Procrustes should preserved pairwise dist b to b"
 
 
-def test_spherical_pca():
-    _test_spherical_pca_helper(2, 2, 10)
-    _test_spherical_pca_helper(10, 2, 10)
-    _test_spherical_pca_helper(10, 10, 100)
-
-
-def _test_spherical_pca_helper(true_d, fit_d, n):
+@pytest.mark.parametrize("true_d,fit_d,n",
+                         [(2, 2, 10),
+                          (10, 2, 10),
+                          (10, 10, 100)])
+def test_spherical_pca(true_d, fit_d, n):
     sphere = HyperSphere(dim=true_d)
     points = torch.stack([sphere.project(torch.randn(true_d+1)) for _ in range(n)], dim=0)
     pca = ManifoldPCA(space=sphere, n_components=fit_d)
