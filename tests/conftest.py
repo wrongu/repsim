@@ -43,3 +43,14 @@ def data_labels():
     labels = torch.zeros(size_m, 4)
     labels[torch.arange(size_m), torch.randint(0, 4, (size_m,))] = 1
     return labels
+
+
+__all__ = [
+    "data_x",
+    "data_y",
+    "data_z",
+    "high_rank_x",
+    "high_rank_y",
+    "data_labels",
+    "metric"
+]
