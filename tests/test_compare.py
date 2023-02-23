@@ -1,8 +1,7 @@
-import numpy as np
 import torch
 from repsim.kernels import Linear, Laplace, SquaredExponential
 from repsim import compare, Stress, AngularCKA, AffineInvariantRiemannian, EuclideanShapeMetric, AngularShapeMetric
-from tests.constants import size_m, size_n
+from tests.constants import size_m, size_n, rtol, atol
 import pytest
 
 
@@ -42,7 +41,7 @@ def test_compare_random_data(name, kwargs, data_x, data_y, data_labels):
         val_yx = compare(y, x, method=name, **kwargs)
         assert not torch.isnan(val_yx) and not torch.isnan(val_xy), \
             f"NaN value in compare() using method {name}"
-        assert torch.isclose(val_yx, val_xy, rtol=1e-3), \
+        assert torch.isclose(val_yx, val_xy, rtol=rtol, atol=atol), \
             f"Asymmetry in comparison using method {name}: {val_yx.item()} vs {val_xy.item()}"
 
     # randn to randn comparison
@@ -52,22 +51,13 @@ def test_compare_random_data(name, kwargs, data_x, data_y, data_labels):
     _test_compare_helper(data_x, data_labels)
 
 
-@pytest.mark.parametrize("metric", [
-    Stress(size_m, kernel=SquaredExponential()),
-    AngularCKA(size_m, kernel=SquaredExponential()),
-    AffineInvariantRiemannian(size_m, kernel=SquaredExponential()),
-    AngularShapeMetric(size_m, p=size_n-1),
-    AngularShapeMetric(size_m, p=size_n+1),
-    EuclideanShapeMetric(size_m, p=size_n-1),
-    EuclideanShapeMetric(size_m, p=size_n+1),
-])
 def test_compare_points(metric, data_x, data_y):
     pt_x, pt_y = metric.neural_data_to_point(data_x), metric.neural_data_to_point(data_y)
     val_xy = metric.length(pt_x, pt_y)
     val_yx = metric.length(pt_y, pt_x)
     assert not torch.isnan(val_yx) and not torch.isnan(val_xy), \
         f"NaN value in compare() using method {metric.string_id()}"
-    assert torch.isclose(val_yx, val_xy, rtol=1e-3), \
+    assert torch.isclose(val_yx, val_xy, rtol=rtol, atol=atol), \
         f"Asymmetry in comparison using method {metric.string_id()}: {val_yx.item()} vs {val_xy.item()}"
 
 

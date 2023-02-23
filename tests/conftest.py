@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 from tests.constants import size_m, size_n, size_n_high_rank
-import os
+from tests.metrics import metric
 
 
 @pytest.fixture(autouse=True)
