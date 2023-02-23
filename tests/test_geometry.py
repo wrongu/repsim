@@ -1,88 +1,10 @@
 import torch
 import numpy as np
-from repsim import Stress, AngularCKA, AffineInvariantRiemannian, AngularShapeMetric, EuclideanShapeMetric
-from repsim.kernels import SquaredExponential
-from repsim.geometry import LengthSpace, GeodesicLengthSpace, RiemannianSpace
-from repsim.geometry.hypersphere import HyperSphere
+from repsim.geometry import LengthSpace, GeodesicLengthSpace
 from repsim.geometry.curvature import alexandrov
 from repsim.geometry.optimize import OptimResult, project_by_binary_search, project_by_tangent_iteration
 from repsim.geometry.trig import angle, slerp
-
-
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-BIG_M = 1000 if torch.cuda.is_available() else 100
-
-
-def _generate_data_helper(metric, n, dtype=torch.float):
-    return [metric.neural_data_to_point(torch.randn(BIG_M, 100, dtype=dtype)) for _ in range(n)]
-
-
-def test_geodesic_stress():
-    _test_geodesic_helper(5, 3, 4, Stress(m=5))
-    _test_geodesic_gradient_descent(5, 3, 4, Stress(m=5))
-    _test_geodesic_endpoints(5, 3, 4, Stress(m=5))
-
-
-def test_geodesic_stress_big():
-    _test_geodesic_helper(BIG_M, 100, 100, Stress(m=BIG_M))
-
-
-def test_geodesic_cka():
-    _test_geodesic_helper(5, 3, 4, AngularCKA(m=5))
-    _test_geodesic_gradient_descent(5, 3, 4, AngularCKA(m=5))
-    _test_geodesic_endpoints(5, 3, 4, AngularCKA(m=5))
-
-
-def test_geodesic_cka_big():
-    _test_geodesic_helper(BIG_M, 100, 100, AngularCKA(m=BIG_M))
-
-
-def test_geodesic_air_gram():
-    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
-    # _test_geodesic_gradient_descent(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))  # FAILS but we don't need it to work
-    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
-
-    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, eps=0.05))
-    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, eps=0.05))
-
-
-def test_geodesic_air_cov():
-    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=3))
-    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=3))
-
-    _test_geodesic_helper(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=5, eps=0.05))
-    _test_geodesic_endpoints(5, 3, 4, AffineInvariantRiemannian(m=5, mode="cov", p=5, eps=0.05))
-
-
-def test_geodesic_air_big():
-    _test_geodesic_helper(BIG_M, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
-
-
-def test_geodesic_angular_shape():
-    _test_geodesic_helper(10, 3, 4, AngularShapeMetric(10, p=2))
-    # _test_geodesic_gradient_descent(10, 3, 4, AngularShapeMetric(10, p=2))  # FAILS but we don't need it to work
-    _test_geodesic_endpoints(10, 3, 4, AngularShapeMetric(10, p=2))
-    _test_geodesic_helper(10, 3, 4, AngularShapeMetric(10, p=5))
-    # _test_geodesic_gradient_descent(10, 3, 4, AngularShapeMetric(10, p=5))  # FAILS but we don't need it to work
-    _test_geodesic_endpoints(10, 3, 4, AngularShapeMetric(10, p=5))
-
-
-def test_geodesic_angular_shape_big():
-    _test_geodesic_helper(BIG_M, 3, 4, AngularShapeMetric(BIG_M, 50))
-
-
-def test_geodesic_euclidean_shape():
-    _test_geodesic_helper(10, 3, 4, EuclideanShapeMetric(10, p=2))
-    # _test_geodesic_gradient_descent(10, 3, 4, EuclideanShapeMetric(10, p=2))  # FAILS but we don't need it to work
-    _test_geodesic_endpoints(10, 3, 4, EuclideanShapeMetric(10, p=2))
-    _test_geodesic_helper(10, 3, 4, EuclideanShapeMetric(10, p=5))
-    # _test_geodesic_gradient_descent(10, 3, 4, EuclideanShapeMetric(10, p=5))  # FAILS but we don't need it to work
-    _test_geodesic_endpoints(10, 3, 4, EuclideanShapeMetric(10, p=5))
-
-
-def test_geodesic_euclidean_shape_big():
-    _test_geodesic_helper(BIG_M, 3, 4, EuclideanShapeMetric(BIG_M, 50))
+from tests.constants import rtol, atol, spherical_atol
 
 
 def test_slerp():
@@ -116,30 +38,38 @@ def test_slerp():
         slerp(vec_a, vec_b, frac).allclose(vec_c_counterclockwise)
 
 
-def _test_geodesic_helper(m, nx, ny, metric):
-    x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
+def test_geodesic(metric, data_x, data_y, high_rank_x, high_rank_y):
+    if metric.test_high_rank_data:
+        x, y = high_rank_x, high_rank_y
+    else:
+        x, y = data_x, data_y
+
     pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
-    frac, tolerance = np.random.rand(1)[0], 1e-3
+    frac = np.random.rand(1)[0]
     pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
     dist_xy = metric.length(pt_x, pt_y)
     dist_xz = metric.length(pt_x, pt_z)
     dist_zy = metric.length(pt_z, pt_y)
 
-    assert metric.contains(pt_z, atol=tolerance), \
+    assert metric.contains(pt_z, atol=atol), \
         f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xz + dist_zy, rtol=tolerance), \
+    assert np.isclose(dist_xy, dist_xz + dist_zy, rtol=rtol), \
         f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
-    assert np.isclose(dist_xz/dist_xy, frac, atol=tolerance), \
+    assert np.isclose(dist_xz/dist_xy, frac, atol=atol), \
         f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
 
     ang = angle(metric, pt_x, pt_z, pt_y).item()
-    assert np.abs(ang - np.pi) < tolerance, \
+    assert np.abs(ang - np.pi) < atol, \
         f"Angle through midpoint using {metric} should be pi but is {ang}"
 
 
-def _test_geodesic_endpoints(m, nx, ny, metric):
-    x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
+def test_geodesic_endpoints(metric, data_x, data_y, high_rank_x, high_rank_y):
+    if metric.test_high_rank_data:
+        x, y = high_rank_x, high_rank_y
+    else:
+        x, y = data_x, data_y
+
     pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     pt_t0 = metric._geodesic_impl(pt_x, pt_y, frac=0.0)
@@ -151,24 +81,33 @@ def _test_geodesic_endpoints(m, nx, ny, metric):
         "geodesic at frac=1 is not equivalent to y!"
 
 
-def _test_geodesic_gradient_descent(m, nx, ny, metric):
-    x, y = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64)
-    k_x, k_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
+def test_geodesic_gradient_descent(metric, data_x, data_y, high_rank_x, high_rank_y):
+    if metric.test_high_rank_data:
+        x, y = high_rank_x, high_rank_y
+    else:
+        x, y = data_x, data_y
 
-    frac, tolerance = np.random.rand(1)[0], 1e-2
+    p_x, p_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
+
+    frac = np.random.rand(1)[0]
 
     # Case 1: compute geodesic using closed-form solution
-    k_z_closed_form = GeodesicLengthSpace.geodesic(metric, k_x, k_y, frac=frac)
+    k_z_closed_form = GeodesicLengthSpace.geodesic(metric, p_x, p_y, frac=frac)
     # Case 2: compute geodesic using gradient descent - set tolerance to something << the value we're going to assert
-    k_z_grad_descent = LengthSpace.geodesic(metric, k_x, k_y, frac=frac, pt_tol=tolerance/100, fn_tol=1e-6)
+    k_z_grad_descent = LengthSpace.geodesic(metric, p_x, p_y, frac=frac, pt_tol=atol/100, fn_tol=1e-6)
 
     # Assert that they're fairly close in terms of length
-    assert metric.length(k_z_grad_descent, k_z_closed_form) < tolerance, \
+    assert metric.length(k_z_grad_descent, k_z_closed_form) < atol, \
         "Closed-form and grad-descent geodesics are not close!"
 
 
-def _test_geodesic_log_exp_helper(metric, pt_x, pt_y):
-    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+def test_log_exp_maps(metric, data_x, data_y, high_rank_x, high_rank_y):
+    if metric.test_high_rank_data:
+        x, y = high_rank_x, high_rank_y
+    else:
+        x, y = data_x, data_y
+
+    pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     frac = np.random.rand(1)[0]
     tol = metric.length(pt_x, pt_y) / 1000
@@ -189,8 +128,13 @@ def _test_geodesic_log_exp_helper(metric, pt_x, pt_y):
     assert metric.length(pt_z, pt_z_3) < tol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
 
 
-def _test_inner_product_helper(metric, pt_x, pt_y):
-    assert isinstance(metric, RiemannianSpace), "This test should only be run with RiemannianSpace subclasses"
+def test_inner_product(metric, data_x, data_y, high_rank_x, high_rank_y):
+    if metric.test_high_rank_data:
+        x, y = high_rank_x, high_rank_y
+    else:
+        x, y = data_x, data_y
+
+    pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     vec_w = metric.log_map(pt_x, pt_y)
     norm_vec_w = vec_w / metric.norm(pt_x, vec_w)
@@ -220,13 +164,16 @@ def _test_inner_product_helper(metric, pt_x, pt_y):
         "inner_product should scale output with scale of inputs (bilinear)!"
 
 
-def _test_parallel_transport_helper(metric, pt_x, pt_y):
-    assert isinstance(metric, RiemannianSpace), \
-        "This test should only be run with RiemannianSpace subclasses"
+def test_parallel_transport(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
+    if metric.test_high_rank_data:
+        x, y, z = high_rank_x, high_rank_y, high_rank_z
+    else:
+        x, y, z = data_x, data_y, data_z
 
-    # Setup: map random tangent vector u from base x to base y
-    dummy = metric.log_map(pt_x, pt_y)
-    u_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype) / np.sqrt(dummy.numel()))
+    pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
+
+    # Transport (x->z) tangent vector from x to y
+    u_x = metric.to_tangent(pt_x, pt_z)
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 0: transporting a vector from a to a is a no-op
@@ -248,8 +195,8 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
     assert torch.isclose(length_u_x, length_u_y, rtol=tol), \
         "map did not preserve length of u"
 
-    # Test 4: inner products are preserved by the map
-    v_x = metric.to_tangent(pt_x, torch.randn(dummy.size(), dtype=pt_x.dtype) / np.sqrt(dummy.numel()))
+    # Test 4: inner products are preserved by the map (this involves creating a new random tangent v_x at x)
+    v_x = metric.to_tangent(pt_x, torch.randn(u_x.size(), dtype=pt_x.dtype) / np.sqrt(u_x.numel()))
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
     dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
     dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
@@ -257,7 +204,14 @@ def _test_parallel_transport_helper(metric, pt_x, pt_y):
         "map did not preserve dot(u,v)"
 
 
-def _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature):
+def test_curvature(metric, use_high_rank, expected_curvature, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
+    if metric.test_high_rank_data:
+        x, y, z = high_rank_x, high_rank_y, high_rank_z
+    else:
+        x, y, z = data_x, data_y, data_z
+
+    pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
+
     curv = alexandrov(metric, pt_x, pt_y, pt_z)
     if expected_curvature == "positive":
         assert curv > 0, \
@@ -278,241 +232,74 @@ def _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature):
         raise ValueError(f"Bad expected_curvature argument: {expected_curvature}")
 
 
-def test_riemann_hypersphere():
-    d = 2 + np.random.randint(10)
-    metric = HyperSphere(dim=d)
-    pt_x = metric.project(torch.randn(d+1))
-    pt_y = metric.project(torch.randn(d+1))
-    pt_z = metric.project(torch.randn(d+1))
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
+def test_projection_by_binary_search(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
+    if metric.test_high_rank_data:
+        x, y, z = high_rank_x, high_rank_y, high_rank_z
+    else:
+        x, y, z = data_x, data_y, data_z
 
-
-def test_riemann_air_gram():
-    metric = AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential())
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-    # NOTE: SOME OF THE BELOW TESTS FAIL WHEN USING SINGLE PRECISION, BUT SUCCEED WHEN USING DOUBLE PRECISION
-    metric = AffineInvariantRiemannian(m=BIG_M, eps=0.05)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_riemann_air_cov():
-    metric = AffineInvariantRiemannian(m=BIG_M, mode="cov", p=50)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-    metric = AffineInvariantRiemannian(m=BIG_M, mode="cov", p=101, eps=.01)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="negative")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_riemann_stress():
-    metric = Stress(m=BIG_M)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-    metric = Stress(m=BIG_M, kernel=SquaredExponential())
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_riemann_angular_cka():
-    metric = AngularCKA(m=BIG_M)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-    metric = AngularCKA(m=BIG_M, kernel=SquaredExponential())
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_riemann_angular_shape():
-    metric = AngularShapeMetric(m=BIG_M, p=4)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3, dtype=torch.float64)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="positive")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_riemann_euclidean_shape():
-    metric = EuclideanShapeMetric(m=BIG_M, p=4)
-    pt_x, pt_y, pt_z = _generate_data_helper(metric, 3)
-    _test_curvature_helper(metric, pt_x, pt_y, pt_z, expected_curvature="zero")
-    _test_geodesic_log_exp_helper(metric, pt_x, pt_y)
-    _test_inner_product_helper(metric, pt_x, pt_y)
-    _test_parallel_transport_helper(metric, pt_x, pt_y)
-
-
-def test_projection_stress():
-    _test_projection_by_binary_search_helper(5, 3, 4, 4, Stress(m=5))
-    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, Stress(m=5))
-
-
-def test_projection_stress_big():
-    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, Stress(m=BIG_M))
-    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, Stress(m=BIG_M))
-
-
-def test_projection_cka():
-    _test_projection_by_binary_search_helper(5, 3, 4, 4, AngularCKA(m=5))
-    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, AngularCKA(m=5))
-
-
-def test_projection_cka_big():
-    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AngularCKA(m=BIG_M))
-    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AngularCKA(m=BIG_M))
-
-
-def test_projection_riemann():
-    _test_projection_by_binary_search_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
-    _test_projection_by_tangent_iteration_helper(5, 3, 4, 4, AffineInvariantRiemannian(m=5, kernel=SquaredExponential()))
-
-
-def test_projection_riemann_big():
-    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
-    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AffineInvariantRiemannian(m=BIG_M, kernel=SquaredExponential()))
-
-
-def test_projection_angular_shape():
-    _test_projection_by_binary_search_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
-    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, AngularShapeMetric(10, p=2))
-    _test_projection_by_binary_search_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
-    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, AngularShapeMetric(10, p=5))
-
-
-def test_projection_angular_shape_big():
-    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
-    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, AngularShapeMetric(BIG_M, p=50))
-
-
-def test_projection_euclidean_shape():
-    _test_projection_by_binary_search_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
-    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=2))
-    _test_projection_by_binary_search_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
-    _test_projection_by_tangent_iteration_helper(10, 3, 4, 4, EuclideanShapeMetric(10, p=5))
-
-
-def test_projection_euclidean_shape_big():
-    _test_projection_by_binary_search_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
-    _test_projection_by_tangent_iteration_helper(BIG_M, 100, 100, 100, EuclideanShapeMetric(BIG_M, p=50))
-
-
-def _test_projection_by_binary_search_helper(m, nx, ny, nz, metric):
-    x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
     pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
 
-    tolerance = 1e-4
-    proj, converged = project_by_binary_search(metric, pt_x, pt_y, pt_z, tol=tolerance / 2)
+    proj, converged = project_by_binary_search(metric, pt_x, pt_y, pt_z, tol=atol / 2)
     dist_xy = metric.length(pt_x, pt_y)
     dist_xp = metric.length(pt_x, proj)
     dist_py = metric.length(proj, pt_y)
 
     assert converged == OptimResult.CONVERGED, \
         f"Projected point failed to converge using {metric}: {proj}"
-    assert metric.contains(proj, atol=tolerance), \
+    assert metric.contains(proj, atol=atol), \
         f"Projected point failed contains() test using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xp + dist_py, atol=tolerance), \
+    assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), \
         f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
 
     frac = np.random.rand(1)[0]
     pt_geo = metric.geodesic(pt_x, pt_y, frac)
-    pt_geo_projected, _ = project_by_binary_search(metric, pt_x, pt_y, pt_geo, tol=tolerance / 2)
-    assert torch.allclose(pt_geo, pt_geo_projected, atol=tolerance), \
+    pt_geo_projected, _ = project_by_binary_search(metric, pt_x, pt_y, pt_geo, tol=atol / 2)
+    assert torch.allclose(pt_geo, pt_geo_projected, atol=atol), \
         "Projection of a point on the geodesic failed to recover that same point"
 
     for i in range(11):
         geo_pt = metric.geodesic(pt_x, pt_y, float(i)/10)
         geo_dist = metric.length(pt_z, geo_pt)
-        assert metric.length(pt_z, proj) < geo_dist + tolerance, \
+        assert metric.length(pt_z, proj) < geo_dist + atol, \
             f"length(z, proj) > length(z, geodesic({i/10:.2}))"
 
 
-def _test_projection_by_tangent_iteration_helper(m, nx, ny, nz, metric):
-    x, y, z = torch.randn(m, nx, dtype=torch.float64), torch.randn(m, ny, dtype=torch.float64), torch.randn(m, nz, dtype=torch.float64)
+def test_projection_by_tangent_iteration(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
+    if metric.test_high_rank_data:
+        x, y, z = high_rank_x, high_rank_y, high_rank_z
+    else:
+        x, y, z = data_x, data_y, data_z
+
     pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
 
-    tolerance = 1e-4
-    proj, converged = project_by_tangent_iteration(metric, pt_x, pt_y, pt_z, tol=tolerance / 2)
+    proj, converged = project_by_tangent_iteration(metric, pt_x, pt_y, pt_z, tol=atol / 2)
     dist_xy = metric.length(pt_x, pt_y)
     dist_xp = metric.length(pt_x, proj)
     dist_py = metric.length(proj, pt_y)
 
     assert converged == OptimResult.CONVERGED, \
         f"Projected point failed to converge using {metric}: {proj}"
-    assert metric.contains(proj, atol=tolerance), \
+    assert metric.contains(proj, atol=atol), \
         f"Projected point failed contains() test using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xp + dist_py, atol=tolerance), \
+    assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), \
         f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
 
     frac = np.random.rand(1)[0]
     pt_geo = metric.geodesic(pt_x, pt_y, frac)
-    pt_geo_projected, _ = project_by_tangent_iteration(metric, pt_x, pt_y, pt_geo, tol=tolerance / 2)
-    assert metric.length(pt_geo, pt_geo_projected) < tolerance, \
+    pt_geo_projected, _ = project_by_tangent_iteration(metric, pt_x, pt_y, pt_geo, tol=atol / 2)
+    assert metric.length(pt_geo, pt_geo_projected) < atol, \
         "Projection of a point on the geodesic failed to recover that same point"
 
     a = angle(metric, pt_x, proj, pt_y).item()
     # Angle should be pi or zero depending on if proj landed between xy or outside of them
     if a < np.pi / 2:
-        assert np.abs(angle) < np.arccos(tolerance)
+        assert np.abs(angle) < spherical_atol
     else:
-        assert np.abs(a - np.pi) < np.arccos(tolerance)
+        assert np.abs(a - np.pi) < spherical_atol
 
 
-
-def test_angular_cka_contains():
-    _test_contains_helper(AngularCKA(100), 100, 10)
-
-
-def test_stress_contains():
-    _test_contains_helper(Stress(100), 100, 10)
-
-
-def test_air_contains():
-    _test_contains_helper(AffineInvariantRiemannian(100, kernel=SquaredExponential()), 100, 10)
-    _test_contains_helper(AffineInvariantRiemannian(100, mode="cov", p=15), 100, 10)
-
-
-def test_angular_shape_contains():
-    _test_contains_helper(AngularShapeMetric(100, p=5), 100, 10)
-    _test_contains_helper(AngularShapeMetric(100, p=50), 100, 10)
-
-
-def test_euclidean_shape_contains():
-    _test_contains_helper(EuclideanShapeMetric(100, p=5), 100, 10)
-    _test_contains_helper(EuclideanShapeMetric(100, p=50), 100, 10)
-
-
-def _test_contains_helper(metric, m, nx):
-    x = torch.randn(m, nx, dtype=torch.float64)
+def test_contains(metric, data_x, high_rank_x):
+    x = high_rank_x if metric.test_high_rank_data else data_x
     pt = metric.neural_data_to_point(x)
     assert metric.contains(pt)
