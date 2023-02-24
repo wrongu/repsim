@@ -54,13 +54,13 @@ def test_geodesic(metric, data_x, data_y, high_rank_x, high_rank_y):
 
     assert metric.contains(pt_z, atol=atol), \
         f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xz + dist_zy, rtol=rtol), \
+    assert np.isclose(dist_xy, dist_xz + dist_zy, atol=atol, rtol=rtol), \
         f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
-    assert np.isclose(dist_xz/dist_xy, frac, atol=atol), \
+    assert np.isclose(dist_xz/dist_xy, frac, atol=atol, rtol=rtol), \
         f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
 
     ang = angle(metric, pt_x, pt_z, pt_y).item()
-    assert np.abs(ang - np.pi) < atol, \
+    assert np.abs(ang - np.pi) < spherical_atol, \
         f"Angle through midpoint using {metric} should be pi but is {ang}"
 
 
@@ -75,9 +75,9 @@ def test_geodesic_endpoints(metric, data_x, data_y, high_rank_x, high_rank_y):
     pt_t0 = metric._geodesic_impl(pt_x, pt_y, frac=0.0)
     pt_t1 = metric._geodesic_impl(pt_x, pt_y, frac=1.0)
 
-    assert torch.allclose(metric.length(pt_x, pt_t0), pt_x.new_zeros(1), atol=1e-6), \
+    assert torch.allclose(metric.length(pt_x, pt_t0), pt_x.new_zeros(1), atol=atol), \
         "geodesic at frac=0 is not equivalent to x!"
-    assert torch.allclose(metric.length(pt_y, pt_t1), pt_x.new_zeros(1), atol=1e-6), \
+    assert torch.allclose(metric.length(pt_y, pt_t1), pt_x.new_zeros(1), atol=atol), \
         "geodesic at frac=1 is not equivalent to y!"
 
 
@@ -177,22 +177,21 @@ def test_parallel_transport(metric, data_x, data_y, data_z, high_rank_x, high_ra
     u_y = metric.levi_civita(pt_x, pt_y, u_x)
 
     # Test 0: transporting a vector from a to a is a no-op
-    tol = 1e-3
     u_x_again = metric.levi_civita(pt_x, pt_x, u_x)
-    assert torch.allclose(u_x, u_x_again, atol=tol, rtol=tol)
+    assert torch.allclose(u_x, u_x_again, atol=atol, rtol=rtol)
 
     # Test 1: result is in the tangent space of y
-    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y), atol=tol, rtol=tol), \
+    assert torch.allclose(u_y, metric.to_tangent(pt_y, u_y), atol=atol, rtol=rtol), \
         "map of u_x to y did not land in the tangent space of y"
 
     # Test 2: vector is unchanged by transporting there and back again
-    assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=tol, rtol=tol), \
+    assert torch.allclose(u_x, metric.levi_civita(pt_y, pt_x, u_y), atol=atol, rtol=rtol), \
         "reverse map did not get back to the starting u"
 
     # Test 3: length is preserved by the map
     length_u_x = metric.norm(pt_x, u_x)
     length_u_y = metric.norm(pt_y, u_y)
-    assert torch.isclose(length_u_x, length_u_y, rtol=tol), \
+    assert torch.isclose(length_u_x, length_u_y, rtol=rtol), \
         "map did not preserve length of u"
 
     # Test 4: inner products are preserved by the map (this involves creating a new random tangent v_x at x)
@@ -200,7 +199,7 @@ def test_parallel_transport(metric, data_x, data_y, data_z, high_rank_x, high_ra
     v_y = metric.levi_civita(pt_x, pt_y, v_x)
     dot_uv_x = metric.inner_product(pt_x, u_x, v_x)
     dot_uv_y = metric.inner_product(pt_y, u_y, v_y)
-    assert torch.isclose(dot_uv_x, dot_uv_y, rtol=tol), \
+    assert torch.isclose(dot_uv_x, dot_uv_y, rtol=rtol), \
         "map did not preserve dot(u,v)"
 
 

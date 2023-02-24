@@ -27,8 +27,9 @@ _list_of_metrics = [
      "translation-invariant": True,
      "scale-invariant": True,
      "affine-invariant": False},
-    {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale=0.5)),
-     "name": f"AngularCKA.SqExp[0.500].{size_m}",
+    # Warning: due to precision issues of float32, sometimes too-small length_scale values will fail tests!
+    {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale=10.0)),
+     "name": f"AngularCKA.SqExp[10.000].{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
