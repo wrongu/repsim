@@ -45,13 +45,9 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         # Pad or truncate to p dimensions
         d = prod(x.shape) // self.m
         if d > self.p:
-            # PCA to truncate -- project onto top p principal axes (no rescaling)
-            _, _, v = svd(x)
-            x = x @ v[:, :self.p]
+            x = _dim_reduce(x, self.p)
         elif d < self.p:
-            # Pad zeros
-            num_pad = self.p - d
-            x = torch.hstack([x.view(self.m, d), x.new_zeros(self.m, num_pad)])
+            x = _pad_zeros(x, self.p)
 
         # Rescale and (partially) whiten to handle scale-invariance, using self._alpha.
         x = _whiten(x, self._alpha)
@@ -353,6 +349,18 @@ def _whiten(x, alpha, clip_eigs=1e-9):
     z = v @ torch.diag(d) @ v.T
     # Think of this as (z @ x.T).T, but note z==z.T
     return x @ z
+
+
+def _dim_reduce(x, p):
+    # PCA to truncate -- project onto top p principal axes (no rescaling)
+    _, _, v = svd(x)
+    return x @ v[:, :p]
+
+
+def _pad_zeros(x, p):
+    m, d = x.size()
+    num_pad = p - d
+    return torch.hstack([x.view(m, d), x.new_zeros(m, num_pad)])
 
 
 def _solve_sylvester(a, b, q):

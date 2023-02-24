@@ -20,12 +20,12 @@ def data_x():
 
 @pytest.fixture
 def data_y(data_x):
-    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n)
+    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n) * 2
 
 
 @pytest.fixture
 def data_z(data_x):
-    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n)
+    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n) * 2
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def high_rank_x():
 
 @pytest.fixture
 def high_rank_y(high_rank_x):
-    return high_rank_x + torch.randn(size_m, size_n_high_rank, device=device, dtype=dtype) / np.sqrt(size_n_high_rank)
+    return high_rank_x + torch.randn(size_m, size_n_high_rank, device=device, dtype=dtype) / np.sqrt(size_n_high_rank) * 2
 
 
 @pytest.fixture
