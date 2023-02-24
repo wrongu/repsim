@@ -1,7 +1,7 @@
 import pytest
 import torch
 import numpy as np
-from tests.constants import size_m, size_n, size_n_high_rank, device
+from tests.constants import size_m, size_n, size_n_high_rank, device, dtype
 from tests.metrics import metric
 
 
@@ -15,33 +15,33 @@ def set_global_test_seed():
 
 @pytest.fixture
 def data_x():
-    return torch.randn(size_m, size_n, device=device)
+    return torch.randn(size_m, size_n, device=device, dtype=dtype)
 
 
 @pytest.fixture
 def data_y(data_x):
-    return data_x + torch.randn(size_m, size_n, device=device) / np.sqrt(size_n)
+    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n)
 
 
 @pytest.fixture
 def data_z(data_x):
-    return data_x + torch.randn(size_m, size_n, device=device) / np.sqrt(size_n)
+    return data_x + torch.randn(size_m, size_n, device=device, dtype=dtype) / np.sqrt(size_n)
 
 
 @pytest.fixture
 def high_rank_x():
-    return torch.randn(size_m, size_n_high_rank, device=device)
+    return torch.randn(size_m, size_n_high_rank, device=device, dtype=dtype)
 
 
 @pytest.fixture
 def high_rank_y(high_rank_x):
-    return high_rank_x + torch.randn(size_m, size_n_high_rank, device=device) / np.sqrt(size_n_high_rank)
+    return high_rank_x + torch.randn(size_m, size_n_high_rank, device=device, dtype=dtype) / np.sqrt(size_n_high_rank)
 
 
 @pytest.fixture
 def data_labels():
     # Create dummy one-hot labels for 4 classes
-    labels = torch.zeros(size_m, 4, device=device)
+    labels = torch.zeros(size_m, 4, device=device, dtype=dtype)
     labels[torch.arange(size_m), torch.randint(0, 4, (size_m,))] = 1
     return labels
 

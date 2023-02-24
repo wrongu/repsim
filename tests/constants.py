@@ -16,9 +16,26 @@ if os.getenv("USE_CUDA") and torch.cuda.is_available():
 else:
     device = "cpu"
 
+if os.getenv("DTYPE") == "float64":
+    dtype = torch.float64
+else:
+    dtype = torch.float32
+
 num_repeats = 2
 rtol = 1e-3
 atol = 1e-3
 # Adjust tolerance for angles; we exect dot products to be as close as possible (e.g. x'*x = 0.99999) but small dot-
 # product errors are amplified in angle calculations (e.g. acos(0.99999) = 4.5e-3)
 spherical_atol = np.arccos(1 - atol)
+
+__all__ = [
+    "size_m",
+    "size_n",
+    "size_n_high_rank",
+    "device",
+    "dtype",
+    "num_repeats",
+    "rtol",
+    "atol",
+    "spherical_atol",
+]
