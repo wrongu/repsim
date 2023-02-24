@@ -3,6 +3,7 @@ import torch
 import warnings
 from repsim.util import prod
 from repsim.geometry.optimize import OptimResult, minimize
+from typing import Optional
 
 # Typing hints... ideally we would specify sizes here, but can't do that with the current type system
 Point = torch.Tensor
@@ -88,12 +89,13 @@ class LengthSpace(abc.ABC):
         :return: scalar length (or 'distance' or 'metric') from a to b
         """
 
-    def geodesic(self, pt_a: Point, pt_b: Point, frac: float = 0.5, **kwargs) -> Point:
+    def geodesic(self, pt_a: Point, pt_b: Point, init_pt: Optional[Point] = None, frac: float = 0.5, **kwargs) -> Point:
         """Compute a point along the (a) geodesic connecting pt_a to pt_b. In a basic LengthSpace, this falls back on
         numerical optimization. Subclasses that inherit from GeodesicLengthSpace are more efficient.
 
         :param pt_a: starting point of the geodesic
         :param pt_b: ending point of the geodesic
+        :param init_pt: (optional) starting point for the search. Defaults to self.project(frac*pt_b + (1-frac)*pt_a)
         :param frac: fraction of distance from a to b
         :param **kwargs: configure optimization
         :return: a new Point, pt_c, such that
@@ -111,8 +113,11 @@ class LengthSpace(abc.ABC):
         elif torch.allclose(pt_a, pt_b, atol=kwargs.get('pt_tol', 1e-6)):
             return self.project((pt_a+pt_b)/2)
 
-        # Default initial guess to projection of euclidean interpolated point
-        pt = self.project((1-frac)*pt_a + frac*pt_b)
+        if init_pt is not None:
+            pt = init_pt.clone()
+        else:
+            # Default initial guess to projection of euclidean interpolated point
+            pt = self.project((1-frac)*pt_a + frac*pt_b)
 
         def loss_fn(pt_c):
             """This loss function is minimized when pt_c is on the geodesic and 'frac' percent of the distance from a to

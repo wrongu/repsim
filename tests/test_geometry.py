@@ -94,7 +94,7 @@ def test_geodesic_gradient_descent(metric, data_x, data_y, high_rank_x, high_ran
     # Case 1: compute geodesic using closed-form solution
     k_z_closed_form = GeodesicLengthSpace.geodesic(metric, p_x, p_y, frac=frac)
     # Case 2: compute geodesic using gradient descent - set tolerance to something << the value we're going to assert
-    k_z_grad_descent = LengthSpace.geodesic(metric, p_x, p_y, frac=frac, pt_tol=atol/100, fn_tol=1e-6)
+    k_z_grad_descent = LengthSpace.geodesic(metric, p_x, p_y, init_pt=k_z_closed_form, frac=frac, pt_tol=atol/100, fn_tol=1e-6)
 
     # Assert that they're fairly close in terms of length
     assert metric.length(k_z_grad_descent, k_z_closed_form) < atol, \
