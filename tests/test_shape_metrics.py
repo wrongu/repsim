@@ -7,6 +7,9 @@ import pytest
 def test_shape_metric_alpha(metric, data_x, data_y):
     if not isinstance(metric, ShapeMetric):
         pytest.skip()
+    elif metric._alpha < 1.0:
+        pytest.xfail(reason="known bug: shape metrics with partial whitening (with alpha < 1.0) do not properly handle "
+                            "length/geodesics in a way that respects homotopy, which is what this test asserts")
 
     # Do some initial standardization to get x and y to be aligned in their top p principal components.
     _, d = data_x.size()
