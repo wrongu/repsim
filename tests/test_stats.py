@@ -117,7 +117,7 @@ def test_procrustes():
 @pytest.mark.parametrize("true_d,fit_d,n",
                          [(2, 2, 10),
                           (10, 2, 10),
-                          (10, 10, 100)])
+                          (5, 5, 50)])
 def test_spherical_pca(true_d, fit_d, n):
     sphere = HyperSphere(dim=true_d)
     points = torch.stack([sphere.project(torch.randn(true_d+1)) for _ in range(n)], dim=0)

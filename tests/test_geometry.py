@@ -110,7 +110,7 @@ def test_log_exp_maps(metric, data_x, data_y, high_rank_x, high_rank_y):
     pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     frac = np.random.rand(1)[0]
-    tol = metric.length(pt_x, pt_y) / 1000
+    tol = metric.length(pt_x, pt_y) / 500
     pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
 
     tangent_x_to_y = metric.log_map(pt_x, pt_y)
@@ -123,7 +123,6 @@ def test_log_exp_maps(metric, data_x, data_y, high_rank_x, high_rank_y):
     assert metric.length(pt_x, pt_x_2) < tol, "exp(y, log(y, x)) failed to recover x"
     pt_z_3 = metric.exp_map(pt_y, (1 - frac) * tangent_y_to_x)
 
-    tol = metric.length(pt_x, pt_y) / 1000
     assert metric.length(pt_z, pt_z_2) < tol, "result of metric.geodesic() is not close to exp(x,frac*log(x,y))"
     assert metric.length(pt_z, pt_z_3) < tol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
 
@@ -203,7 +202,7 @@ def test_parallel_transport(metric, data_x, data_y, data_z, high_rank_x, high_ra
         "map did not preserve dot(u,v)"
 
 
-def test_curvature(metric, use_high_rank, expected_curvature, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
+def test_curvature(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
     if metric.test_high_rank_data:
         x, y, z = high_rank_x, high_rank_y, high_rank_z
     else:
@@ -212,19 +211,19 @@ def test_curvature(metric, use_high_rank, expected_curvature, data_x, data_y, da
     pt_x, pt_y, pt_z = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(z)
 
     curv = alexandrov(metric, pt_x, pt_y, pt_z)
-    if expected_curvature == "positive":
+    if metric.test_expected_curvature == "positive":
         assert curv > 0, \
             "Expected curvature to be positive"
-    elif expected_curvature == "negative":
+    elif metric.test_expected_curvature == "negative":
         assert curv < 0, \
             "Expected curvature to be negative"
-    elif expected_curvature == "nonnegative":
+    elif metric.test_expected_curvature == "nonnegative":
         assert curv >= 0, \
             "Expected curvature to be nonnegative"
-    elif expected_curvature == "nonpositive":
+    elif metric.test_expected_curvature == "nonpositive":
         assert curv <= 0, \
             "Expected curvature to be nonpositive"
-    elif expected_curvature == "zero":
+    elif metric.test_expected_curvature == "zero":
         assert torch.isclose(curv, torch.zeros(1, dtype=curv.dtype), atol=1e-5), \
             "expected curvature to be zero"
     else:

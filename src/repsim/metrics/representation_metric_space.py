@@ -17,6 +17,10 @@ class RepresentationMetricSpace(LengthSpace, abc.ABC):
         # By default, assume that self.m is the first index of self.shape. May be overridden if need be.
         return self.shape[0]
 
+    @m.setter
+    def m(self, val):
+        self.shape = (val,) + self.shape[1:]
+
     @abc.abstractmethod
     def neural_data_to_point(self, x: NeuralData) -> Point:
         """Convert (m,d) sized neural data into a point in the metric space, e.g. converting to an (m,m) sized RDM

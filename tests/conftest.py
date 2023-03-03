@@ -39,6 +39,11 @@ def high_rank_y(high_rank_x):
 
 
 @pytest.fixture
+def high_rank_z(high_rank_x):
+    return high_rank_x + torch.randn(size_m, size_n_high_rank, device=device, dtype=dtype) / np.sqrt(size_n_high_rank) * 2
+
+
+@pytest.fixture
 def data_labels():
     # Create dummy one-hot labels for 4 classes
     labels = torch.zeros(size_m, 4, device=device, dtype=dtype)
