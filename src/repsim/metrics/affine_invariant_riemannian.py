@@ -64,6 +64,8 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     def neural_data_to_point(self, x: NeuralData) -> Point:
         """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
         """
+        # Always preprocess by subtracting the mean to ensure translation invariance
+        x = x - x.mean(dim=0, keepdims=True)
         if x.shape[0] != self.m:
             raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
         if self._mode == "gram":
@@ -73,8 +75,6 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         elif self._mode == "cov":
             # Flatten all but first dimension.
             x = torch.reshape(x, (self.m, -1))
-            # Center columns to handle translation-invariance
-            x = x - torch.mean(x, dim=0)
             # Pad or truncate to p dimensions
             d = prod(x.shape) // self.m
             if d > self._p:
