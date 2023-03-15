@@ -54,6 +54,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     def m(self):
         return self._m
 
+    @m.setter
+    def m(self, new_m):
+        self._m = new_m
+        if self._mode == "gram":
+            self.shape = (new_m, new_m)
+            self.dim = new_m*(new_m+1)/2
+
     def neural_data_to_point(self, x: NeuralData) -> Point:
         """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
         """

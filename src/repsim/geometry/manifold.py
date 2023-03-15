@@ -27,8 +27,17 @@ class LengthSpace(abc.ABC):
     """
     def __init__(self, *, dim: int, shape: tuple):
         self.dim = dim
-        self.shape = shape
+        self._shape = shape
         self.ambient = prod(shape)
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @shape.setter
+    def shape(self, new_shape):
+        self._shape = new_shape
+        self.ambient = prod(new_shape)
 
     def project(self, pt: Point) -> Point:
         """Project a point from the ambient space onto the manifold.
