@@ -3,6 +3,7 @@ import torch
 import numpy as np
 from tests.constants import size_m, size_n, size_n_high_rank, device, dtype
 from tests.metrics import metric
+from tests.kernels import kernel
 
 
 @pytest.fixture(autouse=True)
