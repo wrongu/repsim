@@ -3,7 +3,7 @@ import numpy as np
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.geometry.trig import slerp
-from repsim.kernels import center, DEFAULT_KERNEL
+from repsim.kernels import center, is_centered, DEFAULT_KERNEL
 from repsim import pairwise
 
 
@@ -71,8 +71,8 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         e = torch.linalg.eigvalsh(pt)
         if not all(e >= -atol):
             return False
-        # Test centered; TODO - can we test this without needing to call center()?
-        if not torch.allclose(pt, center(pt), atol=atol):
+        # Test that the matrix is centered
+        if not is_centered(pt, atol=atol):
             return False
         # Test unit Frobenius norm
         if not torch.isclose(torch.linalg.norm(pt, ord='fro'), pt.new_ones((1,)), atol=atol):

@@ -21,6 +21,14 @@ def center(k: torch.Tensor) -> torch.Tensor:
     return H @ k @ H
 
 
+def is_centered(k: torch.Tensor, **kwargs) -> bool:
+    # Centering is essentially subtracting the mean. We can test for centeredness by testing if the row- and col-means
+    # are both zero
+    row_mean, col_mean = torch.mean(k, dim=0), torch.mean(k, dim=1)
+    return torch.allclose(row_mean, torch.zeros_like(row_mean), **kwargs) and \
+        torch.allclose(col_mean, torch.zeros_like(col_mean), **kwargs)
+
+
 def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True) -> torch.Tensor:
     """Compute Hilbert-Schmidt Independence Criteron (HSIC)
 
