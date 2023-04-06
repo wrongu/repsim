@@ -36,8 +36,8 @@ save_dir.mkdir(exist_ok=True)
 metrics = [
     AngularCKA(m=100),
     AngularCKA(m=100, kernel=SquaredExponential()),
-    AngularCKA(m=100, use_unbiased_hsic=True),
-    AngularCKA(m=100, kernel=SquaredExponential(), use_unbiased_hsic=True),
+    AngularCKA(m=100, use_unbiased_hsic=False),
+    AngularCKA(m=100, kernel=SquaredExponential(), use_unbiased_hsic=False),
 ]
 cmap = cm.get_cmap("tab10")
 fig, axs = plt.subplots(1, 2, figsize=(9, 4))

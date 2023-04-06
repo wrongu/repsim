@@ -19,7 +19,7 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         Representations. NeurIPS. https://arxiv.org/abs/2110.14739
     """
 
-    def __init__(self, m, kernel=None, use_unbiased_hsic=False):
+    def __init__(self, m, kernel=None, use_unbiased_hsic=True):
         super().__init__(dim=m*(m+1)/2-1, shape=(m, m))
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
         self._unbiased = use_unbiased_hsic
