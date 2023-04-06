@@ -110,21 +110,29 @@ def test_log_exp_maps(metric, data_x, data_y, high_rank_x, high_rank_y):
     pt_x, pt_y = metric.neural_data_to_point(x), metric.neural_data_to_point(y)
 
     frac = np.random.rand(1)[0]
-    tol = metric.length(pt_x, pt_y) / 500
     pt_z = metric.geodesic(pt_x, pt_y, frac=frac)
 
     tangent_x_to_y = metric.log_map(pt_x, pt_y)
     pt_y_2 = metric.exp_map(pt_x, tangent_x_to_y)
-    assert metric.length(pt_y, pt_y_2) < tol, "exp(x, log(x, y)) failed to recover y"
-    pt_z_2 = metric.exp_map(pt_x, frac * tangent_x_to_y)
+    assert metric.contains(pt_y_2), "exp(log(...)) landed outside the manifold"
+    assert metric.length(pt_y, pt_y_2) < atol, "exp(x, log(x, y)) failed to recover y"
+    assert np.isclose(metric.length(pt_x, pt_y_2), metric.norm(pt_x, tangent_x_to_y)), \
+        "l(x, exp(x, log(x, y))) != ||log(x, y)||"
 
     tangent_y_to_x = metric.log_map(pt_y, pt_x)
     pt_x_2 = metric.exp_map(pt_y, tangent_y_to_x)
-    assert metric.length(pt_x, pt_x_2) < tol, "exp(y, log(y, x)) failed to recover x"
-    pt_z_3 = metric.exp_map(pt_y, (1 - frac) * tangent_y_to_x)
+    assert metric.contains(pt_x_2), "exp(log(...)) landed outside the manifold"
+    assert metric.length(pt_x, pt_x_2) < atol, "exp(y, log(y, x)) failed to recover x"
+    assert np.isclose(metric.length(pt_y, pt_x_2), metric.norm(pt_y, tangent_y_to_x)), \
+        "l(y, exp(y, log(y, x))) != ||log(y, x)||"
 
-    assert metric.length(pt_z, pt_z_2) < tol, "result of metric.geodesic() is not close to exp(x,frac*log(x,y))"
-    assert metric.length(pt_z, pt_z_3) < tol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
+    pt_z_2 = metric.exp_map(pt_x, frac * tangent_x_to_y)
+    assert metric.contains(pt_z_2), "exp(log(...)) landed outside the manifold"
+    assert metric.length(pt_z, pt_z_2) < atol, "result of metric.geodesic() is not close to exp(x,frac*log(x,y))"
+
+    pt_z_3 = metric.exp_map(pt_y, (1 - frac) * tangent_y_to_x)
+    assert metric.contains(pt_z_3), "exp(log(...)) landed outside the manifold"
+    assert metric.length(pt_z, pt_z_3) < atol, "result of metric.geodesic() is not close to exp(y,(1-frac)*log(y,x))"
 
 
 def test_inner_product(metric, data_x, data_y, high_rank_x, high_rank_y):
@@ -227,7 +235,7 @@ def test_curvature(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, hig
         assert torch.isclose(curv, torch.zeros(1, dtype=curv.dtype), atol=1e-5), \
             "expected curvature to be zero"
     else:
-        raise ValueError(f"Bad expected_curvature argument: {expected_curvature}")
+        raise ValueError(f"Bad expected_curvature argument: {metric.test_expected_curvature}")
 
 
 def test_projection_by_binary_search(metric, data_x, data_y, data_z, high_rank_x, high_rank_y, high_rank_z):
@@ -276,25 +284,37 @@ def test_projection_by_tangent_iteration(metric, data_x, data_y, data_z, high_ra
     dist_xp = metric.length(pt_x, proj)
     dist_py = metric.length(proj, pt_y)
 
+    direction = np.sign(metric.inner_product(pt_x, metric.log_map(pt_x, pt_y), metric.log_map(pt_x, pt_z)).item())
+    a = angle(metric, pt_x, proj, pt_y).item()
+
     assert converged == OptimResult.CONVERGED, \
         f"Projected point failed to converge using {metric}: {proj}"
     assert metric.contains(proj, atol=atol), \
         f"Projected point failed contains() test using {metric}, {metric}"
-    assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), \
-        f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+    if direction == +1 and dist_xp < dist_xy:
+        # order is [x, proj, y] and so d(x,p)+d(p,y) should be equal to d(x,y)
+        assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), \
+            f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+        # Angle(x,p,y) should be pi
+        assert np.abs(a - np.pi) < spherical_atol
+    elif direction == +1 and dist_xp >= dist_xy:
+        # order is [x, y, proj] and so d(x,y) should be equal to d(x,p)-d(p,y)
+        assert np.isclose(dist_xy, dist_xp - dist_py, atol=atol), \
+            f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)-d(p,y) is {dist_xp - dist_py}"
+        # Angle(x,p,y) should be 0
+        assert np.abs(a) < spherical_atol
+    elif direction == -1:
+        # order is [proj, x, y] and so d(x,y) should be equal to d(p,y)-d(p,x)
+        assert np.isclose(dist_xy, dist_py - dist_xp, atol=atol), \
+            f"Projected point not along geodesic (case [p,x,y]): d(x,y) is {dist_xy} but d(p,y)-d(p,x) is {dist_py - dist_xp}"
+        # Angle(x,p,y) should be 0
+        assert np.abs(a) < spherical_atol
 
     frac = np.random.rand(1)[0]
     pt_geo = metric.geodesic(pt_x, pt_y, frac)
     pt_geo_projected, _ = project_by_tangent_iteration(metric, pt_x, pt_y, pt_geo, tol=atol / 2)
     assert metric.length(pt_geo, pt_geo_projected) < atol, \
         "Projection of a point on the geodesic failed to recover that same point"
-
-    a = angle(metric, pt_x, proj, pt_y).item()
-    # Angle should be pi or zero depending on if proj landed between xy or outside of them
-    if a < np.pi / 2:
-        assert np.abs(angle) < spherical_atol
-    else:
-        assert np.abs(a - np.pi) < spherical_atol
 
 
 def test_contains(metric, data_x, high_rank_x):

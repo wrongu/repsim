@@ -18,6 +18,15 @@ _list_of_metrics = [
      "translation-invariant": True,
      "scale-invariant": True,
      "affine-invariant": False},
+    # Angular CKA again but now with unbiased HSIC under the hood
+    {"metric": AngularCKA(size_m, use_unbiased_hsic=True),
+     "name": f"AngularCKA.unb.Linear.{size_m}",
+     "expected-curvature": "positive",
+     "high-rank-data": False,
+     "rotation-invariant": True,
+     "translation-invariant": True,
+     "scale-invariant": True,
+     "affine-invariant": False},
     # Next two tests: assert that scale invariance is due to adaptive length scale in the kernel when using sqexp
     {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median')),
      "name": f"AngularCKA.SqExp[median].{size_m}",
@@ -35,6 +44,15 @@ _list_of_metrics = [
      "rotation-invariant": True,
      "translation-invariant": True,
      "scale-invariant": False,
+     "affine-invariant": False},
+    # Also do a test with unbiased HSIC and a SqExp kernel
+    {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median'), use_unbiased_hsic=True),
+     "name": f"AngularCKA.unb.SqExp[median].{size_m}",
+     "expected-curvature": "positive",
+     "high-rank-data": False,
+     "rotation-invariant": True,
+     "translation-invariant": True,
+     "scale-invariant": True,
      "affine-invariant": False},
     # Next two tests: Stress with a linear kernel is scale-invariant only if rescale=True is set
     {"metric": Stress(size_m, kernel=Linear()),
