@@ -18,8 +18,8 @@ _list_of_metrics = [
      "translation-invariant": True,
      "scale-invariant": True,
      "affine-invariant": False},
-    # Angular CKA again but now with unbiased HSIC under the hood
-    {"metric": AngularCKA(size_m, use_unbiased_hsic=True),
+    # Angular CKA again but now without unbiased HSIC under the hood
+    {"metric": AngularCKA(size_m, use_unbiased_hsic=False),
      "name": f"AngularCKA.unb.Linear.{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
@@ -43,7 +43,7 @@ _list_of_metrics = [
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
-     "scale-invariant": False,
+     "scale-invariant": False,  # Not scale invariant because kernel length_scale is fixed
      "affine-invariant": False},
     # Also do a test with unbiased HSIC and a SqExp kernel
     {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median'), use_unbiased_hsic=True),
@@ -88,41 +88,6 @@ _list_of_metrics = [
      "translation-invariant": True,
      "scale-invariant": True,
      "affine-invariant": False},
-    # The 'affine invariant' metric is not, in fact, affine-invariant when using a kernel
-    # {"metric": AffineInvariantRiemannian(m=size_m, kernel=SquaredExponential()),
-    #  "name": f"AffineInvariantRiemannian[gram].SqExp[auto].{size_m}",
-    #  "expected-curvature": "negative",
-    #  "high-rank-data": False,
-    #  "rotation-invariant": True,
-    #  "translation-invariant": True,
-    #  "scale-invariant": True,
-    #  "affine-invariant": False},
-    # {"metric": AffineInvariantRiemannian(m=size_m, kernel=Laplace()),
-    #  "name": f"AffineInvariantRiemannian[gram].Laplace[auto].{size_m}",
-    #  "expected-curvature": "negative",
-    #  "high-rank-data": False,
-    #  "rotation-invariant": True,
-    #  "translation-invariant": True,
-    #  "scale-invariant": True,
-    #  "affine-invariant": False},
-    # # The 'affine invariant' metric *is* affine-invariant using a linear kernel, but only works if n > size_m
-    # {"metric": AffineInvariantRiemannian(m=size_m, kernel=Linear()),
-    #  "name": f"AffineInvariantRiemannian[gram].Linear.{size_m}",
-    #  "expected-curvature": "negative",
-    #  "high-rank-data": True,  # (!!) AffineInvariantRiemannian with a Linear kernel requires n > m
-    #  "rotation-invariant": True,
-    #  "translation-invariant": True,
-    #  "scale-invariant": True,
-    #  "affine-invariant": True},
-    # # ...If we instead use a Linear kernel with eps regularization, we lose the scale and affine invariance again
-    # {"metric": AffineInvariantRiemannian(m=size_m, kernel=Linear(), eps=0.01),
-    #  "name": f"AffineInvariantRiemannian[gram][0.010].Linear.{size_m}",
-    #  "expected-curvature": "negative",
-    #  "high-rank-data": True,
-    #  "rotation-invariant": True,
-    #  "translation-invariant": True,
-    #  "scale-invariant": False,
-    #  "affine-invariant": False},
     # Shape metrics with alpha=0 (full whitening) are invariant to everything...
     {"metric": EuclideanShapeMetric(m=size_m, p=size_n, alpha=0.0),
      "name": f"ShapeMetric[0.00][{size_n}][euclidean].{size_m}",

@@ -7,9 +7,9 @@ import pytest
 def test_shape_metric_alpha(metric, data_x, data_y):
     if not isinstance(metric, ShapeMetric):
         pytest.skip()
-    elif metric._alpha < 1.0:
-        pytest.xfail(reason="known bug: shape metrics with partial whitening (with alpha < 1.0) do not properly handle "
-                            "length/geodesics in a way that respects homotopy, which is what this test asserts")
+    # elif metric._alpha < 1.0:
+    #     pytest.xfail(reason="known bug: shape metrics with partial whitening (with alpha < 1.0) do not properly handle "
+    #                         "length/geodesics in a way that respects homotopy, which is what this test asserts")
 
     # Do some initial standardization to get x and y to be aligned in their top p principal components.
     _, d = data_x.size()
@@ -24,8 +24,8 @@ def test_shape_metric_alpha(metric, data_x, data_y):
     # embedding step includes some curvature not accounted for by the length() function. As an analogy, imagine that
     # our space is R^3 and that the embedding function is f(x)=a*x + (1-a)*x/||x||. In other words, a=0 means f(x)
     # embeds on a sphere and a=1 means euclidean. for intermediate values of 'a', we would like the geodesics to not
-    # take straight path 'shortcuts'. So, we are asserting that length(f(x),f(x')) is to equal length(f(x),
-    # f((x+x')/2))+length(f((x+x')/2),f(x')))
+    # take straight path 'shortcuts'. So, we are asserting that length(f(x),f(x')) is to equal
+    # length(f(x), f((x+x')/2)) + length(f((x+x')/2), f(x')))
     # Visualization of the problem: https://colab.research.google.com/drive/13-kd_RQYcpiuemHKXCX4_l1iQCt1vImE
     mid = (x + y) / 2
     pt_x, pt_y, pt_mid = metric.neural_data_to_point(x), metric.neural_data_to_point(y), metric.neural_data_to_point(mid)
