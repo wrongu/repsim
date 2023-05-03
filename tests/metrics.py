@@ -5,7 +5,7 @@ test 'requests' it by declaring a 'metric' parameter.
 """
 import pytest
 from repsim.kernels import SquaredExponential, Laplace, Linear
-from repsim import AngularCKA, Stress, AngularShapeMetric, EuclideanShapeMetric, AffineInvariantRiemannian
+from repsim import AngularCKA, Stress, AngularShapeMetric, EuclideanShapeMetric
 from tests.constants import size_m, size_n
 
 _list_of_metrics = [

@@ -14,13 +14,21 @@ import pytest
     ("angular_cka", {"kernel": Linear()}),
     ("angular_cka", {"kernel": SquaredExponential()}),
     ("angular_cka", {"kernel": Laplace()}),
+    ("angular_cka", {"kernel": Linear(), "use_unbiased_hsic": False}),
+    ("angular_cka", {"kernel": SquaredExponential(), "use_unbiased_hsic": False}),
+    ("angular_cka", {"kernel": Laplace(), "use_unbiased_hsic": False}),
     ("euclidean_shape_metric", {"p": size_n-1, "alpha": 0.0}),
     ("euclidean_shape_metric", {"p": size_n-1, "alpha": 0.5}),
     ("euclidean_shape_metric", {"p": size_n-1, "alpha": 1.0}),
-    # Include a case where nx and ny > m with a Linear kernel
     ("euclidean_shape_metric", {"p": size_n+1, "alpha": 0.0}),
     ("euclidean_shape_metric", {"p": size_n+1, "alpha": 0.5}),
     ("euclidean_shape_metric", {"p": size_n+1, "alpha": 1.0}),
+    ("angular_shape_metric", {"p": size_n-1, "alpha": 0.0}),
+    ("angular_shape_metric", {"p": size_n-1, "alpha": 0.5}),
+    ("angular_shape_metric", {"p": size_n-1, "alpha": 1.0}),
+    ("angular_shape_metric", {"p": size_n+1, "alpha": 0.0}),
+    ("angular_shape_metric", {"p": size_n+1, "alpha": 0.5}),
+    ("angular_shape_metric", {"p": size_n+1, "alpha": 1.0}),
     ("affine_invariant_riemannian", {"kernel": Linear()}),
     ("affine_invariant_riemannian", {"kernel": SquaredExponential()}),
     ("affine_invariant_riemannian", {"kernel": Laplace()}),
@@ -28,12 +36,6 @@ import pytest
     ("affine_invariant_riemannian", {"mode": "cov", "p": 15}),
     ("affine_invariant_riemannian", {"mode": "cov", "p": 15}),
     ("affine_invariant_riemannian", {"mode": "cov", "p": 15}),
-    ("angular_shape_metric", {"p": size_n-1, "alpha": 0.0}),
-    ("angular_shape_metric", {"p": size_n-1, "alpha": 0.5}),
-    ("angular_shape_metric", {"p": size_n-1, "alpha": 1.0}),
-    ("angular_shape_metric", {"p": size_n+1, "alpha": 0.0}),
-    ("angular_shape_metric", {"p": size_n+1, "alpha": 0.5}),
-    ("angular_shape_metric", {"p": size_n+1, "alpha": 1.0})
 ])
 def test_compare_random_data(name, kwargs, data_x, data_y, data_labels):
     def _test_compare_helper(x, y):

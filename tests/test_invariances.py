@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from tests.constants import num_repeats, rtol, atol, spherical_atol
-import pytest
 
 
 def _randomly_translate(x):
@@ -29,15 +28,17 @@ def _assert_invariant(metric, name, operation, x, y):
 
     for repeat in range(num_repeats):
         altered_pt_x = metric.neural_data_to_point(operation(x))
-        assert torch.isclose(metric._length_impl(pt_x, altered_pt_x),
+        length = metric._length_impl(pt_x, altered_pt_x)
+        assert torch.isclose(length,
                              pt_x.new_zeros((1,)),
                              rtol=rtol,
-                             atol=spherical_atol if metric.is_spherical else atol), \
+                             atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
             f"{metric.string_id()} failed {name} invariance: expected d(x, x') = 0"
-        assert torch.isclose(metric._length_impl(altered_pt_x, pt_y),
+        length = metric._length_impl(altered_pt_x, pt_y)
+        assert torch.isclose(length,
                              base_distance,
                              rtol=rtol,
-                             atol=spherical_atol if metric.is_spherical else atol), \
+                             atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
             f"{metric.string_id()} failed {name} invariance: expected d(x', y) = d(x, y)"
 
 
@@ -48,16 +49,19 @@ def _assert_variant(metric, name, operation, x, y):
 
     for repeat in range(num_repeats):
         altered_pt_x = metric.neural_data_to_point(operation(x))
-        assert not torch.isclose(metric._length_impl(pt_x, altered_pt_x),
+        length = metric._length_impl(pt_x, altered_pt_x)
+        assert not torch.isclose(length,
                                  pt_x.new_zeros((1,)),
                                  rtol=rtol,
-                                 atol=spherical_atol if metric.is_spherical else atol), \
+                                 atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
             f"{metric.string_id()} failed {name} variance: expected d(x, x') != 0"
-        assert not torch.isclose(metric._length_impl(altered_pt_x, pt_y),
+        length = metric._length_impl(altered_pt_x, pt_y)
+        assert not torch.isclose(length,
                                  base_distance,
                                  rtol=rtol,
-                                 atol=spherical_atol if metric.is_spherical else atol), \
+                                 atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
             f"{metric.string_id()} failed {name} variance: expected d(x', y) != d(x, y)"
+
 
 def test_translation_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):
     # Note: tests/metrics.py defines all metrics and creates metric.test_high_rank_data and

@@ -60,7 +60,7 @@ def test_geodesic(metric, data_x, data_y, high_rank_x, high_rank_y):
         f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
 
     ang = angle(metric, pt_x, pt_z, pt_y).item()
-    assert np.abs(ang - np.pi) < spherical_atol, \
+    assert np.abs(ang - np.pi) < spherical_atol(1.0), \
         f"Angle through midpoint using {metric} should be pi but is {ang}"
 
 
@@ -296,19 +296,19 @@ def test_projection_by_tangent_iteration(metric, data_x, data_y, data_z, high_ra
         assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), \
             f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
         # Angle(x,p,y) should be pi
-        assert np.abs(a - np.pi) < spherical_atol
+        assert np.abs(a - np.pi) < spherical_atol(-1.0)
     elif direction == +1 and dist_xp >= dist_xy:
         # order is [x, y, proj] and so d(x,y) should be equal to d(x,p)-d(p,y)
         assert np.isclose(dist_xy, dist_xp - dist_py, atol=atol), \
             f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)-d(p,y) is {dist_xp - dist_py}"
         # Angle(x,p,y) should be 0
-        assert np.abs(a) < spherical_atol
+        assert np.abs(a) < spherical_atol(1.0)
     elif direction == -1:
         # order is [proj, x, y] and so d(x,y) should be equal to d(p,y)-d(p,x)
         assert np.isclose(dist_xy, dist_py - dist_xp, atol=atol), \
             f"Projected point not along geodesic (case [p,x,y]): d(x,y) is {dist_xy} but d(p,y)-d(p,x) is {dist_py - dist_xp}"
         # Angle(x,p,y) should be 0
-        assert np.abs(a) < spherical_atol
+        assert np.abs(a) < spherical_atol(1.0)
 
     frac = np.random.rand(1)[0]
     pt_geo = metric.geodesic(pt_x, pt_y, frac)
