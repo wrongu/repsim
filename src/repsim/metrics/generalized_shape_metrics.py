@@ -310,7 +310,8 @@ def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
     :return: r_a and r_b, which, when right-multiplied with a and b, gives the aligned coordinates, or None for each if
     no transform is required
     """
-    u, _, v = svd(a.T @ b)
+    with torch.no_grad():
+        u, _, v = svd(a.T @ b)
     # Helpful trick to see how these are related: u is the inverse of u.T, and likewise v is inverse of v.T. We get to
     # the anchor=a and anchor=b solutions by right-multiplying both return values by u.T or right-multiplying both
     # return values by v, respectively (if both return values are rotated in the same way, it preserves the shape).
@@ -361,7 +362,8 @@ def _dim_reduce(x, p):
     # TODO - this would surely be faster if we could restrict it to just computing the top p to begin with, but per
     #   [this thread](https://discuss.pytorch.org/t/computing-the-k-largest-singular-values-vector/147658) the best way
     #   to do that would be with lobpcg, which throws an error about p being to big much of the time...
-    _, _, vT = svd(x)
+    with torch.no_grad():
+        _, _, vT = svd(x)
     # svd returns v.T, so the principal axes are in the *rows*. The following einsum is equivalent to x @ vT.T[:, :p]
     # but a bit faster because the transpose is not actually performed.
     return torch.einsum("mn,pn->mp", x, vT[:p, :])
