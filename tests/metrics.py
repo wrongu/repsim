@@ -11,7 +11,7 @@ from tests.constants import size_m, size_n
 _list_of_metrics = [
     # Angular CKA with a linear kernel is not affine invariant
     {"metric": AngularCKA(size_m),
-     "name": f"AngularCKA.Linear.{size_m}",
+     "name": f"AngularCKA.unb.Linear.{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
@@ -20,7 +20,7 @@ _list_of_metrics = [
      "affine-invariant": False},
     # Angular CKA again but now without unbiased HSIC under the hood
     {"metric": AngularCKA(size_m, use_unbiased_hsic=False),
-     "name": f"AngularCKA.unb.Linear.{size_m}",
+     "name": f"AngularCKA.Linear.{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
@@ -29,7 +29,7 @@ _list_of_metrics = [
      "affine-invariant": False},
     # Next two tests: assert that scale invariance is due to adaptive length scale in the kernel when using sqexp
     {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median')),
-     "name": f"AngularCKA.SqExp[median].{size_m}",
+     "name": f"AngularCKA.unb.SqExp[median].{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
@@ -38,16 +38,16 @@ _list_of_metrics = [
      "affine-invariant": False},
     # Warning: due to precision issues of float32, sometimes too-small length_scale values will fail tests!
     {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale=10.0)),
-     "name": f"AngularCKA.SqExp[10.000].{size_m}",
+     "name": f"AngularCKA.unb.SqExp[10.000].{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
      "scale-invariant": False,  # Not scale invariant because kernel length_scale is fixed
      "affine-invariant": False},
-    # Also do a test with unbiased HSIC and a SqExp kernel
-    {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median'), use_unbiased_hsic=True),
-     "name": f"AngularCKA.unb.SqExp[median].{size_m}",
+    # Also do a test with biased HSIC and a SqExp kernel
+    {"metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale='median'), use_unbiased_hsic=False),
+     "name": f"AngularCKA.SqExp[median].{size_m}",
      "expected-curvature": "positive",
      "high-rank-data": False,
      "rotation-invariant": True,
