@@ -40,9 +40,10 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         x = torch.reshape(x, (self.m, -1))
 
         # Center columns to handle translation-invariance
-        x = x - torch.mean(x, dim=0)
+        x = x - torch.mean(x, dim=0, keepdim=True)
 
-        # Pad or truncate to p dimensions
+        # Pad or truncate to p dimensions. Important that this happens before whitening because whitening destroys
+        # principal components (makes them all equivalent).
         d = prod(x.shape) // self.m
         if d > self.p:
             x = _dim_reduce(x, self.p)
@@ -52,7 +53,8 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         # Rescale and (partially) whiten to handle scale-invariance, using self._alpha.
         x = _whiten(x, self._alpha)
 
-        # In case of 'angular' metric only, make all point clouds unit-frobenius-norm
+        # In case of 'angular' metric only, make all point clouds unit-frobenius-norm. Then, points live on the
+        # hypesphere of centered and unit-norm m-by-p matrices.
         if self._score_method == "angular":
             x = x / norm(x, ord="fro")
 
@@ -63,6 +65,9 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 
     @property
     def is_spherical(self) -> bool:
+        # TODO - when we whiten data with alpha=0, we are effectively projecting onto the unit sphere. So we should
+        #  consider that case 'spherical' too. But for 0<alpha<1 and score_method='euclidean' it is neither spherical
+        #  nor not-spherical. We currently don't handle that case particularly well.
         return self._score_method == "angular"
 
     #################################
@@ -353,8 +358,13 @@ def _whiten(x, alpha, clip_eigs=1e-9):
 
 def _dim_reduce(x, p):
     # PCA to truncate -- project onto top p principal axes (no rescaling)
-    _, _, v = svd(x)
-    return x @ v[:, :p]
+    # TODO - this would surely be faster if we could restrict it to just computing the top p to begin with, but per
+    #   [this thread](https://discuss.pytorch.org/t/computing-the-k-largest-singular-values-vector/147658) the best way
+    #   to do that would be with lobpcg, which throws an error about p being to big much of the time...
+    _, _, vT = svd(x)
+    # svd returns v.T, so the principal axes are in the *rows*. The following einsum is equivalent to x @ vT.T[:, :p]
+    # but a bit faster because the transpose is not actually performed.
+    return torch.einsum("mn,pn->mp", x, vT[:p, :])
 
 
 def _pad_zeros(x, p):
