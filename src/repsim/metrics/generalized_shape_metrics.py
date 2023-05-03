@@ -93,7 +93,15 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         # Test unit norm (if angular)
         if self._score_method == "angular" and not torch.isclose(norm(pt, ord="fro"), pt.new_ones((1,))):
             return False
-        # Note – whitening is not tested because we could only assert something about it if alpha==0.
+        if self._alpha == 0.:
+            # Test whitened (if alpha==0)
+            whitened_pt = _whiten(pt, 0.)
+            if self._score_method == "angular":
+                if not torch.allclose(pt, whitened_pt / torch.linalg.norm(whitened_pt, ord="fro"), atol=atol):
+                    return False
+            elif self._score_method == "euclidean":
+                if not torch.allclose(pt, whitened_pt, atol=atol):
+                    return False
         return True
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
