@@ -209,7 +209,7 @@ def pairwise_arc_lengths(X, center):
 
 
 def _is_arc_length_matrix(X):
-    tolerance = 1e-4
+    tolerance, soft_tolerance = 1e-4, 1e-3
     if X.ndim != 2:
         return False
     if X.shape[0] != X.shape[1]:
@@ -220,5 +220,8 @@ def _is_arc_length_matrix(X):
     # Note that arccos(0.999) = .045, which is still 'far from zero'. So instead of asserting that the diagonal is zero,
     # we'll assert that it's as close to zero as can be expected based on 'tolerance' error in the dot() part.
     if not torch.all(X.diag().abs() < np.arccos(1.0 - tolerance)):
-        return False
+        if torch.all(X.diag().abs() < np.arccos(1.0 - soft_tolerance)):
+            warnings.warn("Diagonal of arc-length matrix is not zero, but is close to zero.")
+        else:
+            return False
     return True
