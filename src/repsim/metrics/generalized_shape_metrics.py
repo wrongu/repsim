@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from torch.linalg import norm, svd, eigh
+from torch.linalg import norm, eigh
 from scipy.linalg import solve_sylvester
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
@@ -306,7 +306,7 @@ class AngularShapeMetric(ShapeMetric):
 
 
 def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
-    """Provided a and b, each matrices of size (m, p) that are already centered and scaled, solve the orthogonal
+    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the orthogonal
     procrustest problem (rotate a and b into a common frame that minimizes distances).
 
     If anchor="middle" (default) then both a and b
@@ -319,7 +319,7 @@ def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
     no transform is required
     """
     with torch.no_grad():
-        u, _, v = svd(a.T @ b)
+        u, _, v = torch.linalg.svd(a.T @ b)
     # Helpful trick to see how these are related: u is the inverse of u.T, and likewise v is inverse of v.T. We get to
     # the anchor=a and anchor=b solutions by right-multiplying both return values by u.T or right-multiplying both
     # return values by v, respectively (if both return values are rotated in the same way, it preserves the shape).
@@ -334,7 +334,7 @@ def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
 
 
 def _orthogonal_procrustes(a, b, anchor="middle"):
-    """Provided a and b, each matrices of size (m, p) that are already centered and scaled, solve the orthogonal
+    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the orthogonal
     procrustest problem (rotate a and b into a common frame that minimizes distances).
 
     If anchor="middle" (default) then both a and b
@@ -367,11 +367,8 @@ def _whiten(x, alpha, clip_eigs=1e-9):
 
 def _dim_reduce(x, p):
     # PCA to truncate -- project onto top p principal axes (no rescaling)
-    # TODO - this would surely be faster if we could restrict it to just computing the top p to begin with, but per
-    #   [this thread](https://discuss.pytorch.org/t/computing-the-k-largest-singular-values-vector/147658) the best way
-    #   to do that would be with lobpcg, which throws an error about p being to big much of the time...
     with torch.no_grad():
-        _, _, vT = svd(x)
+        _, _, vT = torch.linalg.svd(x, full_matrices=False)
     # svd returns v.T, so the principal axes are in the *rows*. The following einsum is equivalent to x @ vT.T[:, :p]
     # but a bit faster because the transpose is not actually performed.
     return torch.einsum("mn,pn->mp", x, vT[:p, :])
