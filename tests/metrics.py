@@ -106,14 +106,14 @@ _list_of_metrics = [
      "translation-invariant": True,
      "scale-invariant": True,
      "affine-invariant": False},
-    # Also try p<n with alpha>0 (same invariances as previous one)
+    # Also try p<n with alpha>0 (no longer scale invariant without full whitening)
     {"metric": EuclideanShapeMetric(m=size_m, p=size_n//2, alpha=0.5),
      "name": f"ShapeMetric[0.50][{size_n//2}][euclidean].{size_m}",
      "expected-curvature": "positive",  # (!!) EuclideanShapeMetric curvature ≥ 0 when alpha < 1
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
-     "scale-invariant": True,
+     "scale-invariant": False,  # (!!) EuclideanShapeMetric is not scale invariant when alpha > 0
      "affine-invariant": False},
     {"metric": EuclideanShapeMetric(m=size_m, p=size_n//2, alpha=1.0),
      "name": f"ShapeMetric[1.00][{size_n//2}][euclidean].{size_m}",
@@ -121,7 +121,7 @@ _list_of_metrics = [
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
-     "scale-invariant": True,
+     "scale-invariant": False,  # (!!) EuclideanShapeMetric is not scale invariant when alpha > 0
      "affine-invariant": False},
     # Shape metrics are also not affine-invariant when doing partial (alpha=0.5) or no (alpha=1.0) whitening
     {"metric": EuclideanShapeMetric(m=size_m, p=size_n, alpha=0.5),
@@ -130,7 +130,7 @@ _list_of_metrics = [
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
-     "scale-invariant": True,
+     "scale-invariant": False,  # (!!) EuclideanShapeMetric is not scale invariant when alpha > 0
      "affine-invariant": False},
     {"metric": EuclideanShapeMetric(m=size_m, p=size_n, alpha=1.0),
      "name": f"ShapeMetric[1.00][{size_n}][euclidean].{size_m}",
@@ -138,7 +138,7 @@ _list_of_metrics = [
      "high-rank-data": False,
      "rotation-invariant": True,
      "translation-invariant": True,
-     "scale-invariant": True,
+     "scale-invariant": False,  # (!!) EuclideanShapeMetric is not scale invariant when alpha > 0
      "affine-invariant": False},
     # ...repeat the last 4 tests for the AngularShapeMetric
     {"metric": AngularShapeMetric(m=size_m, p=size_n, alpha=0.0),
