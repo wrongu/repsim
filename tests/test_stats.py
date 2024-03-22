@@ -4,7 +4,9 @@ from repsim.geometry.hypersphere import HyperSphere
 from repsim.geometry.trig import angle
 from repsim.stats import SphericalMDS, ManifoldPCA
 from repsim.metrics.generalized_shape_metrics import _orthogonal_procrustes
+from repsim import AngularCKA, AngularShapeMetric
 from repsim.util import pdist2
+from tests.constants import size_m, size_n
 import pytest
 
 
@@ -134,3 +136,21 @@ def test_spherical_pca(true_d, fit_d, n):
     if true_d == fit_d:
         assert torch.allclose(points, new_points, atol=1e-3), \
             "PCA failed to recover the correct points when true_d == fit_d == " + str(true_d)
+
+
+def test_acka_pca(data_x, data_y, data_z):
+    sphere = AngularCKA(m=size_m)
+    points = [sphere.neural_data_to_point(x) for x in [data_x, data_y, data_z]]
+    pca = ManifoldPCA(space=sphere, n_components=1)
+    coordinates = pca.fit_transform(points).float()
+    assert coordinates.shape == (3, 1), \
+        "Expected size of output of ManifoldPCA.transform to be 3 by 1"
+
+
+def test_shape_pca(data_x, data_y, data_z):
+    sphere = AngularShapeMetric(m=size_m, p=size_n // 2)
+    points = [sphere.neural_data_to_point(x) for x in [data_x, data_y, data_z]]
+    pca = ManifoldPCA(space=sphere, n_components=1)
+    coordinates = pca.fit_transform(points).float()
+    assert coordinates.shape == (3, 1), \
+        "Expected size of output of ManifoldPCA.transform to be 3 by 1"
