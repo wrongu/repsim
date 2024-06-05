@@ -138,6 +138,29 @@ def test_spherical_pca(true_d, fit_d, n):
             "PCA failed to recover the correct points when true_d == fit_d == " + str(true_d)
 
 
+@pytest.mark.parametrize("true_d,fit_d,n",
+                         [(2, 2, 10),
+                          (10, 2, 10),
+                          (5, 5, 50)])
+def test_spherical_pca_offset_scaled(true_d, fit_d, n):
+    sphere = HyperSphere(dim=true_d)
+    scales = torch.exp(-torch.arange(true_d+1).float())
+    points = torch.stack([sphere.project(torch.randn(true_d+1) * scales + 1) for _ in range(n)], dim=0)
+    pca = ManifoldPCA(space=sphere, n_components=fit_d)
+    coordinates = pca.fit_transform(points).float()
+
+    assert coordinates.shape == (n, fit_d), \
+        "Expected size of output of ManifoldPCA.transform to be n by n_components"
+
+    new_points = pca.inverse_transform(coordinates)
+    assert new_points.shape == points.shape, \
+        "Expected size of output of ManifoldPCA.inverse_transform to be same as original data"
+
+    if true_d == fit_d:
+        assert torch.allclose(points, new_points, atol=1e-3), \
+            "PCA failed to recover the correct points when true_d == fit_d == " + str(true_d)
+
+
 def test_acka_pca(data_x, data_y, data_z):
     sphere = AngularCKA(m=size_m)
     points = [sphere.neural_data_to_point(x) for x in [data_x, data_y, data_z]]
