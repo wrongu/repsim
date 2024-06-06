@@ -1,0 +1,12 @@
+numpy
+scikit-learn
+torch
+pytest
+pandas
+seaborn
+matplotlib
+tqdm
+black
+docformatter
+flake8
+flake8-bugbear
