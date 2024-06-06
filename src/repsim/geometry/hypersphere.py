@@ -5,12 +5,12 @@ from repsim.geometry.trig import slerp
 
 
 class HyperSphere(RiemannianSpace):
-    """Class for handling geometric operations on an n-dimensional hypersphere
-    """
+    """Class for handling geometric operations on an n-dimensional
+    hypersphere."""
 
     def __init__(self, dim):
         # a dim-dimensional sphere has points that live in dim+1-dimensional space
-        super().__init__(dim=dim, shape=(dim+1,))
+        super().__init__(dim=dim, shape=(dim + 1,))
 
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         return slerp(pt_a, pt_b, frac)
@@ -24,7 +24,9 @@ class HyperSphere(RiemannianSpace):
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
         dot_ab = torch.dot(pt_a, pt_b)
-        len_a, len_b = torch.sqrt(torch.dot(pt_a, pt_a)), torch.sqrt(torch.dot(pt_b, pt_b))
+        len_a, len_b = torch.sqrt(torch.dot(pt_a, pt_a)), torch.sqrt(
+            torch.dot(pt_b, pt_b)
+        )
         cosine = dot_ab / len_a / len_b
         return torch.arccos(torch.clip(cosine, -1.0, +1.0))
 
@@ -46,17 +48,26 @@ class HyperSphere(RiemannianSpace):
 
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
         unscaled_w = self.to_tangent(pt_a, pt_b)
-        norm_w = unscaled_w / torch.clip(torch.sqrt(torch.sum(unscaled_w * unscaled_w)), 1e-7)
+        norm_w = unscaled_w / torch.clip(
+            torch.sqrt(torch.sum(unscaled_w * unscaled_w)), 1e-7
+        )
         return norm_w * self.length(pt_a, pt_b)
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
-        # Idea: decompose the tangent vector w into (i) a part that is orthogonal to the transport direction, and (ii)
-        # a part along the transport direction. The orthogonal part will be unchanged through the map, and the parallel
-        # part will be rotated in the plane spanned by pt_a and the unit v. (thanks to the geomstats package for
-        # reference implementation)
+        # Idea: decompose the tangent vector w into (i) a part that is orthogonal to the
+        # transport direction, and (ii) a part along the transport direction. The orthogonal part
+        # will be unchanged through the map, and the parallel part will be rotated in the plane
+        # spanned by pt_a and the unit v. (thanks to the geomstats package for reference
+        # implementation)
         vec_v = self.log_map(pt_a, pt_b)
         angle = self.length(pt_a, pt_b)
-        unit_v = vec_v / torch.clip(angle, 1e-7)  # the length of tangent vector v *is* the length from a to b
+        unit_v = vec_v / torch.clip(
+            angle, 1e-7
+        )  # the length of tangent vector v *is* the length from a to b
         w_along_v = torch.sum(unit_v * vec_w)
         orth_part = vec_w - w_along_v * unit_v
-        return orth_part + torch.cos(angle) * w_along_v * unit_v - torch.sin(angle) * w_along_v * pt_a
+        return (
+            orth_part
+            + torch.cos(angle) * w_along_v * unit_v
+            - torch.sin(angle) * w_along_v * pt_a
+        )

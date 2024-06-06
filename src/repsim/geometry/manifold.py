@@ -12,7 +12,8 @@ Vector = torch.Tensor
 
 
 class LengthSpace(abc.ABC):
-    """Base class for metric spaces with an associated length(). A metric space (X, d) is any space that satisfies
+    """Base class for metric spaces with an associated length(). A metric space (X, d) is any space
+    that satisfies.
 
     (i) the identity property, or d(pt_a, pt_a) = 0
     (ii) the symmetry property, or d(pt_a, pt_b) = d(pt_b, pt_a)
@@ -25,6 +26,7 @@ class LengthSpace(abc.ABC):
     - shape : tuple describing the tensor shape of points, as in numpy.ndarray.shape
     - ambient : the ambient dimensionality, equal to prod(shape). E.g. a sphere in 3d has ambient=3
     """
+
     def __init__(self, *, dim: int, shape: tuple):
         self.dim = dim
         self._shape = shape
@@ -49,13 +51,13 @@ class LengthSpace(abc.ABC):
 
     @abc.abstractmethod
     def _project_impl(self, pt: Point) -> Point:
-        """Implementation of project() without checking contains() first
-        """
+        """Implementation of project() without checking contains() first."""
 
     def contains(self, pt: Point, atol: float = 1e-6) -> bool:
         """Check whether the given point is within 'atol' tolerance of the manifold.
 
-        LengthSpace.contains checks match to ambient shape only. Further specialization done by subclasses.
+        LengthSpace.contains checks match to ambient shape only. Further specialization done by
+        subclasses.
         """
         if pt.shape != self.shape:
             return False
@@ -98,9 +100,17 @@ class LengthSpace(abc.ABC):
         :return: scalar length (or 'distance' or 'metric') from a to b
         """
 
-    def geodesic(self, pt_a: Point, pt_b: Point, init_pt: Optional[Point] = None, frac: float = 0.5, **kwargs) -> Point:
-        """Compute a point along the (a) geodesic connecting pt_a to pt_b. In a basic LengthSpace, this falls back on
-        numerical optimization. Subclasses that inherit from GeodesicLengthSpace are more efficient.
+    def geodesic(
+        self,
+        pt_a: Point,
+        pt_b: Point,
+        init_pt: Optional[Point] = None,
+        frac: float = 0.5,
+        **kwargs,
+    ) -> Point:
+        """Compute a point along the (a) geodesic connecting pt_a to pt_b. In a basic LengthSpace,
+        this falls back on numerical optimization. Subclasses that inherit from GeodesicLengthSpace
+        are more efficient.
 
         :param pt_a: starting point of the geodesic
         :param pt_b: ending point of the geodesic
@@ -111,7 +121,7 @@ class LengthSpace(abc.ABC):
             1. it is on the geodesic, so length(pt_a, pt_c)+length(pt_c, pt_b) = length(pt_a, pt_b) and
             2. it divides the total length by 'frac', so frac = length(pt_a, pt_c) / length(pt_a, pt_b)
         """
-        if frac < 0. or frac > 1.:
+        if frac < 0.0 or frac > 1.0:
             raise ValueError(f"'frac' must be in [0, 1] but is {frac}")
 
         # Three cases where we can just break early without optimizing
@@ -119,33 +129,36 @@ class LengthSpace(abc.ABC):
             return pt_a
         elif frac == 1:
             return pt_b
-        elif torch.allclose(pt_a, pt_b, atol=kwargs.get('pt_tol', 1e-6)):
-            return self.project((pt_a+pt_b)/2)
+        elif torch.allclose(pt_a, pt_b, atol=kwargs.get("pt_tol", 1e-6)):
+            return self.project((pt_a + pt_b) / 2)
 
         if init_pt is not None:
             pt = init_pt.clone()
         else:
             # Default initial guess to projection of euclidean interpolated point
-            pt = self.project((1-frac)*pt_a + frac*pt_b)
+            pt = self.project((1 - frac) * pt_a + frac * pt_b)
 
         def loss_fn(pt_c):
-            """This loss function is minimized when pt_c is on the geodesic and 'frac' percent of the distance from a to
-            b. The fact that it is quadratic in dist_ac and dist_bc makes it more numerically stable to work with in
-            gradient descent.
+            """This loss function is minimized when pt_c is on the geodesic and 'frac' percent of
+            the distance from a to b.
+
+            The fact that it is quadratic in dist_ac and dist_bc makes it more numerically stable to
+            work with in gradient descent.
             """
             dist_ac, dist_bc = self.length(pt_a, pt_c), self.length(pt_c, pt_b)
-            return dist_ac*dist_ac*(1-frac) + dist_bc*dist_bc*frac
+            return dist_ac * dist_ac * (1 - frac) + dist_bc * dist_bc * frac
 
         pt, status = minimize(self, loss_fn, pt, **kwargs)
         if status != OptimResult.CONVERGED:
-            warnings.warn(f"Minimization failed to converge! Status is {status}. Geodesic point may be unreliable")
+            warnings.warn(
+                f"Minimization failed to converge! Status is {status}. Geodesic point may be unreliable"
+            )
         return pt
 
 
 class GeodesicLengthSpace(LengthSpace):
-    """GeodesicLengthSpace is an abstract base class for LengthSpaces that additionally provide a closed-form function
-    to compute points along a geodesic.
-    """
+    """GeodesicLengthSpace is an abstract base class for LengthSpaces that additionally provide a
+    closed-form function to compute points along a geodesic."""
 
     def geodesic(self, pt_a: Point, pt_b: Point, frac: float = 0.5, **kwargs) -> Point:
         """Compute a point along the (a) geodesic connecting pt_a to pt_b.
@@ -158,27 +171,30 @@ class GeodesicLengthSpace(LengthSpace):
             2. it divides the total length by 'frac', so frac = length(pt_a, pt_c) / length(pt_a, pt_b)
         """
         if len(kwargs) > 0:
-            warnings.warn(f"{self.__class__.__name__}.geodesic takes no kwargs, but got {kwargs.keys()}")
+            warnings.warn(
+                f"{self.__class__.__name__}.geodesic takes no kwargs, but got {kwargs.keys()}"
+            )
 
         # Check some cases where we can take a shortcut
         if torch.allclose(pt_a, pt_b):
             return pt_a.clone()
-        elif frac == 0.:
+        elif frac == 0.0:
             return pt_a.clone()
-        elif frac == 1.:
+        elif frac == 1.0:
             return pt_b.clone()
         else:
             return self._geodesic_impl(pt_a, pt_b, frac)
 
     @abc.abstractmethod
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
-        """Implementation of geodesic() without checks.
-        """
+        """Implementation of geodesic() without checks."""
 
 
 class RiemannianSpace(GeodesicLengthSpace):
-    """RiemannianSpace is an abstract base class for Riemannian Manifolds, which must be GeodesicLengthSpaces. Further,
-    a Riemannian space provides functions for doing things with tangent spaces.
+    """RiemannianSpace is an abstract base class for Riemannian Manifolds, which must be
+    GeodesicLengthSpaces.
+
+    Further, a Riemannian space provides functions for doing things with tangent spaces.
     """
 
     @abc.abstractmethod
@@ -187,7 +203,8 @@ class RiemannianSpace(GeodesicLengthSpace):
 
         :param pt_a: point on the manifold
         :param vec_w: a vector in the ambient space whose base is at pt_a
-        :return: projection of vec_w into the tangent space at pt_a. (If already in it, the returned vector is vec_w)
+        :return: projection of vec_w into the tangent space at pt_a. (If already in it, the returned
+            vector is vec_w)
         """
 
     @abc.abstractmethod
@@ -201,16 +218,16 @@ class RiemannianSpace(GeodesicLengthSpace):
         """
 
     def squared_norm(self, pt_a: Point, vec_w: Vector):
-        """Compute squared norm of a tangent vector at a point
+        """Compute squared norm of a tangent vector at a point.
 
         :param pt_a: point defining the tangent space
         :param vec_w: first vector
         :return: squared length of w according to the metric, AKA <w,w>
         """
         return self.inner_product(pt_a, vec_w, vec_w)
-    
+
     def norm(self, pt_a: Point, vec_w: Vector):
-        """Compute norm of a tangent vector at a point
+        """Compute norm of a tangent vector at a point.
 
         :param pt_a: point defining the tangent space
         :param vec_w: first vector
@@ -220,8 +237,9 @@ class RiemannianSpace(GeodesicLengthSpace):
 
     @abc.abstractmethod
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
-        """Compute exponential map, which intuitively means finding the point pt_b that you get starting from pt_a and
-        moving in the direction vec_w, which must be in the tangent space of pt_a.
+        """Compute exponential map, which intuitively means finding the point pt_b that you get
+        starting from pt_a and moving in the direction vec_w, which must be in the tangent space of
+        pt_a.
 
         :param pt_a: base point
         :param vec_w: tangent vector
@@ -234,20 +252,30 @@ class RiemannianSpace(GeodesicLengthSpace):
 
         :param pt_a: base point. This defines where the tangent space is.
         :param pt_b: target point such that exp_map(pt_a, log_map(pt_a, pt_b)) = pt_b
-        :return: vec_w, the vector in the tangent space at pt_a pointing in the direction (and magnitude) of pt_b
+        :return: vec_w, the vector in the tangent space at pt_a pointing in the direction (and
+            magnitude) of pt_b
         """
 
     @abc.abstractmethod
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
-        """Parallel-transport a tangent vector vec_w from pt_a to pt_b. The Levi-Civita connection is a nice way of
-        defining "parallel lines" originating at two different places in a curved space. We say that vec_v at pt_b is
-        parallel to vec_w at pt_a if, locally at b, levi_civita(pt_a, pt_b, vec_w) is colinear with vec_v.
+        """Parallel-transport a tangent vector vec_w from pt_a to pt_b. The Levi-Civita connection
+        is a nice way of defining "parallel lines" originating at two different places in a curved
+        space. We say that vec_v at pt_b is parallel to vec_w at pt_a if, locally at b,
+        levi_civita(pt_a, pt_b, vec_w) is colinear with vec_v.
 
         :param pt_a: base point where vec_w is a tangent vector
         :param pt_b: target point to transport to.
         :param vec_w: the tangent vector at pt_a to be transported to pt_b
-        :return: vec_v, a vector in the tangent space of pt_b, corresponding to the parallel transport of vec_w
+        :return: vec_v, a vector in the tangent space of pt_b, corresponding to the parallel
+            transport of vec_w
         """
 
 
-__all__ = ["Point", "Scalar", "Vector", "LengthSpace", "GeodesicLengthSpace", "RiemannianSpace"]
+__all__ = [
+    "Point",
+    "Scalar",
+    "Vector",
+    "LengthSpace",
+    "GeodesicLengthSpace",
+    "RiemannianSpace",
+]

@@ -1,4 +1,10 @@
-from repsim import AngularCKA, AffineInvariantRiemannian, Stress, AngularShapeMetric, EuclideanShapeMetric
+from repsim import (
+    AngularCKA,
+    AffineInvariantRiemannian,
+    Stress,
+    AngularShapeMetric,
+    EuclideanShapeMetric,
+)
 from repsim.kernels import SquaredExponential
 
 

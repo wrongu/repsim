@@ -24,6 +24,8 @@ else:
 num_repeats = 2
 rtol = 1e-3
 atol = 1e-3
+
+
 # Adjust tolerance for angles; we exect dot products to be as close as possible (e.g. x'*x = 0.99999) but small dot-
 # product errors are amplified in angle calculations (e.g. acos(0.99999) = 4.5e-3). The size of the spherical tolerance
 # is adjusted to the location on the arccos curve.
@@ -33,7 +35,7 @@ def spherical_atol(dot_value):
     # times the error tolerance in the dot product value (which is atol). Since the max of |da/dd| is 1, this means
     # that spherical_atol will range between atol and arccos(1-atol).
     max_atol = np.arccos(1 - atol)
-    return min(max_atol, atol / np.sqrt(1 - dot_value ** 2))
+    return min(max_atol, atol / np.sqrt(1 - dot_value**2))
 
 
 __all__ = [

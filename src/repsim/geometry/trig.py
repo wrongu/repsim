@@ -3,14 +3,16 @@ from repsim.geometry import LengthSpace, RiemannianSpace, Point, Scalar
 
 
 def slerp(pt_a: Point, pt_b: Point, frac: float) -> Point:
-    """Spherical Linear intERPolation between two points -- see [1]. The interpolated point will always have unit norm.
+    """Spherical Linear intERPolation between two points -- see [1]. The interpolated point will
+    always have unit norm.
 
     [1] https://en.m.wikipedia.org/wiki/Slerp
 
     :param pt_a: starting point. Will be normalized to unit length.
     :param pt_b: ending point. Will be normalized to unit length.
     :param frac: fraction of arc length from pt_a to pt_b
-    :return: unit vector on the great-circle connecting pt_a to pt_b that is 'frac' of the distance from pt_a to pt_b
+    :return: unit vector on the great-circle connecting pt_a to pt_b that is 'frac' of the distance
+        from pt_a to pt_b
     """
     assert 0.0 <= frac <= 1.0, "frac must be between 0 and 1"
 
@@ -33,7 +35,7 @@ def slerp(pt_a: Point, pt_b: Point, frac: float) -> Point:
     eps = 1e-6
     if dot_ab > 1.0 - eps:
         # dot(a,b) is effectively 1, so A and B are effectively the same vector. Do Euclidean interpolation.
-        return _norm(a*(1-frac) + b*frac)
+        return _norm(a * (1 - frac) + b * frac)
     elif dot_ab < -1 + eps:
         # dot(a,b) is effectively -1, so A and B are effectively at opposite poles. There are infinitely many geodesics.
         raise ValueError("A and B are andipodal - cannot SLERP")
@@ -46,16 +48,19 @@ def slerp(pt_a: Point, pt_b: Point, frac: float) -> Point:
     return (a_frac + b_frac).reshape(a.shape)
 
 
-def angle(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs) -> Scalar:
+def angle(
+    space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs
+) -> Scalar:
     """Angle B of triangle ABC, based on incident angle of geodesics AB and CB.
 
-    If B is along the geodesic from A to C, then the angle is pi (180 degrees). If A=C, then the angle is zero.
+    If B is along the geodesic from A to C, then the angle is pi (180 degrees). If A=C, then the
+    angle is zero.
 
     :param space: a LengthSpace defining the metric and geodesics
     :param pt_a: point A
     :param pt_b: point B
-    :param pt_c: point C
-    :key delta: at what scale does the space look locally Euclidean? Default 0.01
+    :param pt_c: point C :key delta: at what scale does the space look locally Euclidean? Default
+        0.01
     :param kwargs: optional arguments passed to geodesic optimization, if needed
     :return:
     """
@@ -69,7 +74,7 @@ def angle(space: LengthSpace, pt_a: Point, pt_b: Point, pt_c: Point, **kwargs) -
     else:
         # In general length spaces, we'll approximate the angle by constructing a point 1/1000th of the way from B to
         # each of A and C, then use the law of cosines locally
-        delta = kwargs.pop('delta', 1e-3)
+        delta = kwargs.pop("delta", 1e-3)
         pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
         pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)
 

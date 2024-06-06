@@ -21,8 +21,8 @@ def mean_euclidean(x: torch.Tensor, y=None) -> float:
 
 
 def auto_length_scale(x: torch.Tensor, expression: str) -> float:
-    """Evaluate an expression like 'auto' or 'median/2'; these expressions are some simple formula applied to the median
-     or mean pairwise distance between points.
+    """Evaluate an expression like 'auto' or 'median/2'; these expressions are some simple formula
+    applied to the median or mean pairwise distance between points.
 
     Example valid expressions:
     - 'auto' : this is equivalent to 'median' (backwards compatibility)
@@ -40,7 +40,7 @@ def auto_length_scale(x: torch.Tensor, expression: str) -> float:
         return median_euclidean(x)
 
     if "median" in expression:
-        expression_locals = {"median":  median_euclidean(x)}
+        expression_locals = {"median": median_euclidean(x)}
     elif "mean" in expression:
         expression_locals = {"mean": mean_euclidean(x)}
     else:
@@ -49,5 +49,4 @@ def auto_length_scale(x: torch.Tensor, expression: str) -> float:
     return eval(expression, {}, expression_locals)
 
 
-__all__ = ["median_euclidean",
-           "auto_length_scale"]
+__all__ = ["median_euclidean", "auto_length_scale"]

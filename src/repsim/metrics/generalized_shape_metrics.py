@@ -9,18 +9,19 @@ from repsim.util import prod
 
 
 class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
-    """The Pre Shape Metric is like the Shape Metric but without removing rotations (no alignment step).
-    """
+    """The Pre Shape Metric is like the Shape Metric but without removing rotations (no alignment
+    step)."""
 
     SCORE_METHODS = ["euclidean", "angular"]
 
     def __init__(self, m, p, alpha=1.0, score_method="euclidean"):
-        super().__init__(dim=m*p, shape=(m, p))
+        super().__init__(dim=m * p, shape=(m, p))
         self.p = p
         self._alpha = alpha
         self._score_method = score_method
-        assert score_method in PreShapeMetric.SCORE_METHODS, \
-            f"score_method must be one of {PreShapeMetric.SCORE_METHODS} but was {score_method}"
+        assert (
+            score_method in PreShapeMetric.SCORE_METHODS
+        ), f"score_method must be one of {PreShapeMetric.SCORE_METHODS} but was {score_method}"
 
     ###############################################
     # Implement RepresentationMetricSpace methods #
@@ -28,13 +29,16 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 
     # TODO - allow p=None in which case no reshaping is done and matrices are always cast to the larger dimension in comparisons
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (m,d) neural data to a size (m,p) matrix. If d>p then we keep the top p dimensions by PCA. If
-        d<p we pad with zeros.
+        """Convert size (m,d) neural data to a size (m,p) matrix. If d>p then we keep the top p
+        dimensions by PCA. If d<p we pad with zeros.
 
-        Essentially, this takes care of 'translation' and 'scaling' invariances, up to some regularization.
+        Essentially, this takes care of 'translation' and 'scaling' invariances, up to some
+        regularization.
         """
         if x.shape[0] != self.m:
-            raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
+            raise ValueError(
+                f"Expected x to be size ({self.m}, ?) but is size {x.shape}"
+            )
 
         # Flatten all but first dimension. TODO optional conv reshape into (m*h*w,c) as done by Williams et al?
         x = torch.reshape(x, (self.m, -1))
@@ -88,16 +92,24 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
         if pt.shape != (self.m, self.p):
             return False
         # Test centered
-        if not torch.allclose(torch.mean(pt, dim=0), pt.new_zeros(pt.shape[1:]), atol=atol):
+        if not torch.allclose(
+            torch.mean(pt, dim=0), pt.new_zeros(pt.shape[1:]), atol=atol
+        ):
             return False
         # Test unit norm (if angular)
-        if self._score_method == "angular" and not torch.isclose(norm(pt, ord="fro"), pt.new_ones((1,))):
+        if self._score_method == "angular" and not torch.isclose(
+            norm(pt, ord="fro"), pt.new_ones((1,))
+        ):
             return False
-        if self._alpha == 0.:
+        if self._alpha == 0.0:
             # Test whitened (if alpha==0)
-            whitened_pt = _whiten(pt, 0.)
+            whitened_pt = _whiten(pt, 0.0)
             if self._score_method == "angular":
-                if not torch.allclose(pt, whitened_pt / torch.linalg.norm(whitened_pt, ord="fro"), atol=atol):
+                if not torch.allclose(
+                    pt,
+                    whitened_pt / torch.linalg.norm(whitened_pt, ord="fro"),
+                    atol=atol,
+                ):
                     return False
             elif self._score_method == "euclidean":
                 if not torch.allclose(pt, whitened_pt, atol=atol):
@@ -109,7 +121,9 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
             diff_ab = pt_a - pt_b
             return norm(diff_ab, ord="fro")
         elif self._score_method == "angular":
-            cos_ab = torch.sum(pt_a * pt_b) / torch.sqrt(torch.sum(pt_a * pt_a) * torch.sum(pt_b * pt_b))
+            cos_ab = torch.sum(pt_a * pt_b) / torch.sqrt(
+                torch.sum(pt_a * pt_a) * torch.sum(pt_b * pt_b)
+            )
             return torch.arccos(torch.clip(cos_ab, -1.0, +1.0))
 
     #########################################
@@ -118,7 +132,7 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         if self._score_method == "euclidean":
-            return pt_a * (1-frac) + pt_b * frac
+            return pt_a * (1 - frac) + pt_b * frac
         elif self._score_method == "angular":
             return slerp(pt_a, pt_b, frac)
 
@@ -127,12 +141,13 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
     #####################################
 
     def to_tangent(self, pt_a: Point, vec_w: Vector):
-        """Project to tangent in the pre-shape space. Pre-shapes are equivalent translation (and scale if using angular
-        distance), but not rotation.
+        """Project to tangent in the pre-shape space. Pre-shapes are equivalent translation (and
+        scale if using angular distance), but not rotation.
 
         :param pt_a: base point for the tangent vector
         :param vec_w: ambient space vector
-        :return: tangent vector with mean-shifts removed, as well as scaling removed (if score_method=angular)
+        :return: tangent vector with mean-shifts removed, as well as scaling removed (if
+            score_method=angular)
         """
         # Points must be 'centered', so subtract off component of vec that would affect the mean
         vec_w = vec_w - torch.mean(vec_w, dim=0)
@@ -172,10 +187,14 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
             # Identical to Hypersphere.levi_civita
             vec_v = self.log_map(pt_a, pt_b)
             angle = self.length(pt_a, pt_b)
-            unit_v = vec_v / torch.clip(angle, 1e-7)  # the length of tangent vector v *is* the length from a to b
+            unit_v = vec_v / torch.clip(
+                angle, 1e-7
+            )  # the length of tangent vector v *is* the length from a to b
             w_along_v = torch.sum(unit_v * vec_w)
             orth_part = vec_w - w_along_v * unit_v
-            return orth_part + w_along_v * (torch.cos(angle) * unit_v - torch.sin(angle) * pt_a)
+            return orth_part + w_along_v * (
+                torch.cos(angle) * unit_v - torch.sin(angle) * pt_a
+            )
 
 
 class ShapeMetric(PreShapeMetric):
@@ -202,11 +221,15 @@ class ShapeMetric(PreShapeMetric):
     """
 
     def string_id(self) -> str:
-        return f"ShapeMetric[{self._alpha:.2f}][{self.p}][{self._score_method}].{self.m}"
+        return (
+            f"ShapeMetric[{self._alpha:.2f}][{self.p}][{self._score_method}].{self.m}"
+        )
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
         # Length in shape space = length in pre shape space after aligning points to each other
-        return super(ShapeMetric, self)._length_impl(*_orthogonal_procrustes(pt_a, pt_b))
+        return super(ShapeMetric, self)._length_impl(
+            *_orthogonal_procrustes(pt_a, pt_b)
+        )
 
     #########################################
     # Implement GeodesicLengthSpace methods #
@@ -214,15 +237,21 @@ class ShapeMetric(PreShapeMetric):
 
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         # Choice of anchor here is largely arbitrary, but for local consistency with log_map we set it to 'a'
-        return super(ShapeMetric, self)._geodesic_impl(*_orthogonal_procrustes(pt_a, pt_b, anchor="a"), frac)
+        return super(ShapeMetric, self)._geodesic_impl(
+            *_orthogonal_procrustes(pt_a, pt_b, anchor="a"), frac
+        )
 
     #####################################
     # Implement RiemannianSpace methods #
     #####################################
 
-    def _horizontal_tangent(self, pt_a: Point, vec_w: Vector, *, vert_part: Vector = None) -> Vector:
-        """The 'horizontal' part of the tangent space is the part that is actually movement in the quotient space,
-        i.e. across equivalence classes. For example, east/west movement where equivalence = lines of longitude.
+    def _horizontal_tangent(
+        self, pt_a: Point, vec_w: Vector, *, vert_part: Vector = None
+    ) -> Vector:
+        """The 'horizontal' part of the tangent space is the part that is actually movement in the
+        quotient space, i.e. across equivalence classes.
+
+        For example, east/west movement where equivalence = lines of longitude.
         """
         # Start by ensuring vec_w is a tangent vector in the pre-shape space
         vec_w = super(ShapeMetric, self).to_tangent(pt_a, vec_w)
@@ -235,8 +264,7 @@ class ShapeMetric(PreShapeMetric):
         return horz_part
 
     def _solve_skew_symmetric_vertical_tangent(self, pt_a: Point, vec_w: Vector):
-        """Find A such that x@A is the vertical part of vec_w at pt_a
-        """
+        """Find A such that x@A is the vertical part of vec_w at pt_a."""
         # Start by ensuring vec_w is a tangent vector in the pre-shape space
         vec_w = super(ShapeMetric, self).to_tangent(pt_a, vec_w)
         # See equation (2) in Nava-Yazdani et al (2020), but note that all of our equations are transposed from theirs
@@ -245,18 +273,22 @@ class ShapeMetric(PreShapeMetric):
         return _solve_sylvester(xxT, xxT, wxT - wxT.T)
 
     def _vertical_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
-        """The 'vertical' part of the tangent space is the part that doesn't count as movement in the quotient space,
-        i.e. within equivalence classes. For example, north/south movement where equivalence = lines of longitude.
+        """The 'vertical' part of the tangent space is the part that doesn't count as movement in
+        the quotient space, i.e. within equivalence classes. For example, north/south movement where
+        equivalence = lines of longitude.
 
-        The space of 'vertical' tangents, after accounting for shifts and scales with _aux_to_tangent, is the set of
-        rotations. We get these by looking at the span of all 2D rotations – one per pair of axes in our space.
+        The space of 'vertical' tangents, after accounting for shifts and scales with
+        _aux_to_tangent, is the set of rotations. We get these by looking at the span of all 2D
+        rotations – one per pair of axes in our space.
         """
         return pt_a @ self._solve_skew_symmetric_vertical_tangent(pt_a, vec_w)
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
         # Ensure that we're only measuring the 'horizontal' part of each tangent vector. (We expect distance between
         # two points to be equal to square root norm of the logarithmic map between them).
-        h_vec_w, h_vec_v = self._horizontal_tangent(pt_a, vec_w), self._horizontal_tangent(pt_a, vec_v)
+        h_vec_w, h_vec_v = self._horizontal_tangent(
+            pt_a, vec_w
+        ), self._horizontal_tangent(pt_a, vec_v)
         return super(ShapeMetric, self).inner_product(pt_a, h_vec_w, h_vec_v)
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
@@ -292,31 +324,35 @@ class ShapeMetric(PreShapeMetric):
 
 
 class EuclideanShapeMetric(ShapeMetric):
-    """Specialization of ShapeMetric which automatically sets score_method='euclidean'
-    """
+    """Specialization of ShapeMetric which automatically sets score_method='euclidean'."""
+
     def __init__(self, *args, **kwargs):
-        super(EuclideanShapeMetric, self).__init__(*args, score_method="euclidean", **kwargs)
+        super(EuclideanShapeMetric, self).__init__(
+            *args, score_method="euclidean", **kwargs
+        )
 
 
 class AngularShapeMetric(ShapeMetric):
-    """Specialization of ShapeMetric which automatically sets score_method='angular'
-    """
+    """Specialization of ShapeMetric which automatically sets score_method='angular'."""
+
     def __init__(self, *args, **kwargs):
-        super(AngularShapeMetric, self).__init__(*args, score_method="angular", **kwargs)
+        super(AngularShapeMetric, self).__init__(
+            *args, score_method="angular", **kwargs
+        )
 
 
 def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
-    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the orthogonal
-    procrustest problem (rotate a and b into a common frame that minimizes distances).
+    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the
+    orthogonal procrustest problem (rotate a and b into a common frame that minimizes distances).
 
-    If anchor="middle" (default) then both a and b
-    If anchor="a", then a is left unchanged and b is rotated towards it
-    If anchor="b", then b is left unchanged and a is rotated towards it
+    If anchor="middle" (default) then both a and b If anchor="a", then a is left unchanged and b is
+    rotated towards it If anchor="b", then b is left unchanged and a is rotated towards it
 
-    See https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
+    See
+    https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
 
-    :return: r_a and r_b, which, when right-multiplied with a and b, gives the aligned coordinates, or None for each if
-    no transform is required
+    :return: r_a and r_b, which, when right-multiplied with a and b, gives the aligned coordinates,
+        or None for each if no transform is required
     """
     with torch.no_grad():
         u, _, v = torch.linalg.svd(a.T @ b)
@@ -330,34 +366,37 @@ def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
     elif anchor == "b":
         return u @ v, None
     else:
-        raise ValueError(f"Invalid 'anchor' argument: {anchor} (must be 'middle', 'a', or 'b')")
+        raise ValueError(
+            f"Invalid 'anchor' argument: {anchor} (must be 'middle', 'a', or 'b')"
+        )
 
 
 def _orthogonal_procrustes(a, b, anchor="middle"):
-    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the orthogonal
-    procrustest problem (rotate a and b into a common frame that minimizes distances).
+    """Provided a and b, each matrix of size (m, p) that are already centered and scaled, solve the
+    orthogonal procrustest problem (rotate a and b into a common frame that minimizes distances).
 
-    If anchor="middle" (default) then both a and b
-    If anchor="a", then a is left unchanged and b is rotated towards it
-    If anchor="b", then b is left unchanged and a is rotated towards it
+    If anchor="middle" (default) then both a and b If anchor="a", then a is left unchanged and b is
+    rotated towards it If anchor="b", then b is left unchanged and a is rotated towards it
 
-    See https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
+    See
+    https://en.wikipedia.org/wiki/Orthogonal_Procrustes_problem
 
-    :return: new_a, new_b the rotated versions of a and b, minimizing element-wise squared differences
+    :return: new_a, new_b the rotated versions of a and b, minimizing element-wise squared
+        differences
     """
     r_a, r_b = _orthogonal_procrustes_rotation(a, b, anchor)
     return a @ r_a if r_a is not None else a, b @ r_b if r_b is not None else b
 
 
 def _whiten(x, alpha, clip_eigs=1e-9):
-    """Compute (partial) whitening transform of x. When alpha=0 it is classic ZCA whitening and columns of x are totally
-    decorrelated. When alpha=1, nothing happens.
+    """Compute (partial) whitening transform of x. When alpha=0 it is classic ZCA whitening and
+    columns of x are totally decorrelated. When alpha=1, nothing happens.
 
     Assumes x is already centered.
     """
     e, v = eigh(x.T @ x / len(x))
     e = torch.clip(e, min=clip_eigs, max=None)
-    d = alpha + (1 - alpha) * (e ** -0.5)
+    d = alpha + (1 - alpha) * (e**-0.5)
     # From right to left, the transformation (1) projects x onto v, (2) divides by stdev in each direction, and (3)
     # rotates back to align with original directions in x-space (ZCA)
     z = v @ torch.diag(d) @ v.T
@@ -382,5 +421,11 @@ def _pad_zeros(x, p):
 
 def _solve_sylvester(a, b, q):
     # TODO - implement natively in pytorch so we don't have to convert to numpy on CPU and back again
-    a_np, b_np, q_np = a.detach().cpu().numpy(), b.detach().cpu().numpy(), q.detach().cpu().numpy()
-    return torch.tensor(solve_sylvester(a_np, b_np, q_np), dtype=a.dtype, device=a.device)
+    a_np, b_np, q_np = (
+        a.detach().cpu().numpy(),
+        b.detach().cpu().numpy(),
+        q.detach().cpu().numpy(),
+    )
+    return torch.tensor(
+        solve_sylvester(a_np, b_np, q_np), dtype=a.dtype, device=a.device
+    )

@@ -23,7 +23,9 @@ class Radial(Kernel):
     def _rescale(self, x):
         if type(self._scale) == str:
             if x.shape[0] < x.shape[1]:
-                raise RuntimeWarning("It's a bad idea to use automatic length-scale with too little data")
+                raise RuntimeWarning(
+                    "It's a bad idea to use automatic length-scale with too little data"
+                )
             return x / auto_length_scale(x, self._scale)
         else:
             return x / self._scale
@@ -39,7 +41,6 @@ class SquaredExponential(Radial):
 
     def effective_dim(self, x) -> float:
         return float("inf")
-
 
 
 class Laplace(Radial):

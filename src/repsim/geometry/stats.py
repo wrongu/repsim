@@ -7,11 +7,13 @@ import warnings
 
 
 class IterativeFrechetMean(object):
-    """The Frechet Mean is the generalization of 'mean' to data on a manifold. Here, the manifold is a sphere. In other
-    words, we're computing the point on the sphere that minimizes the sum of squared distances to all rows of X.
+    """The Frechet Mean is the generalization of 'mean' to data on a manifold. Here, the manifold is
+    a sphere. In other words, we're computing the point on the sphere that minimizes the sum of
+    squared distances to all rows of X.
 
-    Algorithm iteratively refines an estimate of the mean, analogous to other familiar 'running mean' algorithms. Result
-    is only approximate and depends on data order, so it is encouraged that calls to update() are shuffled.
+    Algorithm iteratively refines an estimate of the mean, analogous to other familiar 'running
+    mean' algorithms. Result is only approximate and depends on data order, so it is encouraged that
+    calls to update() are shuffled.
     """
 
     def __init__(self, space: RiemannianSpace):
@@ -33,19 +35,20 @@ class IterativeFrechetMean(object):
 
 
 def iterate_frechet_mean(space: RiemannianSpace, points: Iterable[Point]) -> Point:
-    """Convenience wrapper around IterativeFrechetMean
-    """
+    """Convenience wrapper around IterativeFrechetMean."""
     ifm = IterativeFrechetMean(space)
     for pt in points:
         ifm.update(pt)
     return ifm.mean
 
 
-def optimize_frechet_mean(space: RiemannianSpace,
-                          points: Iterable[Point],
-                          init_method: str = "random point") -> Point:
-    """The Frechet Mean is the generalization of 'mean' to data on a manifold. Here, the manifold is a sphere. In other
-    words, we're computing the point on the sphere that minimizes the sum of squared distances to all rows of X.
+def optimize_frechet_mean(
+    space: RiemannianSpace, points: Iterable[Point], init_method: str = "random point"
+) -> Point:
+    """The Frechet Mean is the generalization of 'mean' to data on a manifold.
+
+    Here, the manifold is a sphere. In other words, we're computing the point on the sphere that
+    minimizes the sum of squared distances to all rows of X.
     """
 
     points = [space.project(x) for x in points]
@@ -61,7 +64,7 @@ def optimize_frechet_mean(space: RiemannianSpace,
 
     # loss function
     def sum_squared_distance(m):
-        return sum([space.length(m, p)**2 for p in points])
+        return sum([space.length(m, p) ** 2 for p in points])
 
     frechet_mean, converged = minimize(space, sum_squared_distance, init, max_iter=1000)
 

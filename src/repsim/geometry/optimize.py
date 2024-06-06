@@ -5,6 +5,7 @@ from typing import Callable, Tuple
 
 # Avoid circular import of LengthSpace, Point, Scalar - only import if in type_checking mode
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from repsim.geometry import LengthSpace, RiemannianSpace, Point, Scalar
 
@@ -19,18 +20,20 @@ class OptimResult(enum.Enum):
     NO_OPT_NEEDED = 0
 
 
-def minimize(space: "LengthSpace",
-             fun: Callable[["Point"], "Scalar"],
-             init: "Point",
-             *,
-             pt_tol: float = 1e-6,
-             fn_tol: float = 1e-6,
-             init_step_size: float = 0.1,
-             max_step_size: float = 100.,
-             wolfe_c1=1e-4,
-             wolfe_c2=0.9,
-             wolfe_c2_min=1e-2,
-             max_iter: int = 10000) -> Tuple["Point", OptimResult]:
+def minimize(
+    space: "LengthSpace",
+    fun: Callable[["Point"], "Scalar"],
+    init: "Point",
+    *,
+    pt_tol: float = 1e-6,
+    fn_tol: float = 1e-6,
+    init_step_size: float = 0.1,
+    max_step_size: float = 100.0,
+    wolfe_c1=1e-4,
+    wolfe_c2=0.9,
+    wolfe_c2_min=1e-2,
+    max_iter: int = 10000
+) -> Tuple["Point", OptimResult]:
     """Function minimization on a Length Space by gradient descent and line search.
 
     :param space: Length Space
@@ -53,18 +56,22 @@ def minimize(space: "LengthSpace",
         # Update by gradient descent + line search
         step_direction = -1 * grad
         new_pt = space.project(pt + step_size * step_direction)
-        new_fval, new_grad = fun(new_pt), torch.autograd.functional.jacobian(fun, new_pt)
+        new_fval, new_grad = fun(new_pt), torch.autograd.functional.jacobian(
+            fun, new_pt
+        )
 
         # Test for convergence
-        if space.length(pt, new_pt) <= pt_tol and \
-                new_fval <= fval and \
-                fval - new_fval <= fn_tol:
+        if (
+            space.length(pt, new_pt) <= pt_tol
+            and new_fval <= fval
+            and fval - new_fval <= fn_tol
+        ):
             return new_pt if new_fval < fval else pt, OptimResult.CONVERGED
 
         # Check Wolfe conditions
         sq_step_size = (grad * step_direction).sum()
         condition_i = new_fval <= fval + wolfe_c1 * step_size * sq_step_size
-        condition_ii = (step_direction*new_grad).sum() >= wolfe_c2 * sq_step_size
+        condition_ii = (step_direction * new_grad).sum() >= wolfe_c2 * sq_step_size
         if condition_i and condition_ii:
             # Both conditions met! Update pt and loop.
             pt, fval, grad = new_pt.clone(), new_fval, new_grad
@@ -90,18 +97,20 @@ def minimize(space: "LengthSpace",
     return pt, OptimResult.MAX_STEPS_REACHED
 
 
-def project_by_binary_search(space: "LengthSpace",
-                             pt_a: "Point",
-                             pt_b: "Point",
-                             pt_c: "Point",
-                             *,
-                             dist_a_b = None,
-                             dist_a_c = None,
-                             dist_c_b = None,
-                             tol=1e-6,
-                             max_recurse=20) -> Tuple["Point", OptimResult]:
-    """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the geodesic that
-    connects pt_a to pt_b.
+def project_by_binary_search(
+    space: "LengthSpace",
+    pt_a: "Point",
+    pt_b: "Point",
+    pt_c: "Point",
+    *,
+    dist_a_b=None,
+    dist_a_c=None,
+    dist_c_b=None,
+    tol=1e-6,
+    max_recurse=20
+) -> Tuple["Point", OptimResult]:
+    """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the
+    geodesic that connects pt_a to pt_b.
 
     Note: because this *subdivides* the geodesic, it can only interpolate between pt_a and pt_b not extrapolate. If
     extrapolation is required, use project_by_tangent_iteration
@@ -145,36 +154,42 @@ def project_by_binary_search(space: "LengthSpace",
 
     # Recurse LEFT if A is closer to C than B is, or RIGHT otherwise
     if dist_a_c < dist_c_b:
-        return project_by_binary_search(space,
-                                        pt_a=pt_a,
-                                        pt_b=mid,
-                                        pt_c=pt_c,
-                                        tol=tol,
-                                        dist_a_b=dist_a_b/2,
-                                        dist_a_c=dist_a_c,
-                                        dist_c_b=dist_mid_c,
-                                        max_recurse=max_recurse - 1)
+        return project_by_binary_search(
+            space,
+            pt_a=pt_a,
+            pt_b=mid,
+            pt_c=pt_c,
+            tol=tol,
+            dist_a_b=dist_a_b / 2,
+            dist_a_c=dist_a_c,
+            dist_c_b=dist_mid_c,
+            max_recurse=max_recurse - 1,
+        )
     else:
-        return project_by_binary_search(space,
-                                        pt_a=mid,
-                                        pt_b=pt_b,
-                                        pt_c=pt_c,
-                                        tol=tol,
-                                        dist_a_b=dist_a_b/2,
-                                        dist_a_c=dist_mid_c,
-                                        dist_c_b=dist_c_b,
-                                        max_recurse=max_recurse - 1)
+        return project_by_binary_search(
+            space,
+            pt_a=mid,
+            pt_b=pt_b,
+            pt_c=pt_c,
+            tol=tol,
+            dist_a_b=dist_a_b / 2,
+            dist_a_c=dist_mid_c,
+            dist_c_b=dist_c_b,
+            max_recurse=max_recurse - 1,
+        )
 
 
-def project_by_tangent_iteration(space: "RiemannianSpace",
-                             pt_a: "Point",
-                             pt_b: "Point",
-                             pt_c: "Point",
-                             *,
-                             tol=1e-6,
-                             max_iterations=100) -> Tuple["Point", OptimResult]:
-    """Find 'projection' of pt_c onto a geodesic that spans (pt_a, pt_b) by iteratively nudging pt_a towards or away
-    from pt_b until (pt_a, pt_c) is orthogonal to (pt_a, pt_b)
+def project_by_tangent_iteration(
+    space: "RiemannianSpace",
+    pt_a: "Point",
+    pt_b: "Point",
+    pt_c: "Point",
+    *,
+    tol=1e-6,
+    max_iterations=100
+) -> Tuple["Point", OptimResult]:
+    """Find 'projection' of pt_c onto a geodesic that spans (pt_a, pt_b) by iteratively nudging pt_a
+    towards or away from pt_b until (pt_a, pt_c) is orthogonal to (pt_a, pt_b)
 
     Note: resulting point may be extrapolated outside of the (a, b) interval
 
@@ -205,7 +220,10 @@ def project_by_tangent_iteration(space: "RiemannianSpace",
         length_pc_along_ab = space.inner_product(pt_a, tangent_pc_at_a, tangent_ab_norm)
         if torch.isnan(length_pc_along_ab):
             print("WTF: NaN")
-        if len(projected_lengths) >= 2 and np.abs(projected_lengths[-1]) - np.abs(projected_lengths[-2]) > 0:
+        if (
+            len(projected_lengths) >= 2
+            and np.abs(projected_lengths[-1]) - np.abs(projected_lengths[-2]) > 0
+        ):
             print("WTF: growing")
         projected_lengths.append(length_pc_along_ab.item())
         # If length of step size is less than tol, declare convergence

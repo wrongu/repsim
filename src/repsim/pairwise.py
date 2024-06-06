@@ -5,14 +5,14 @@ from typing import Union
 
 
 def inner_product(
-        x: torch.Tensor,
-        *,
-        kernel: Union[None, kernels.Kernel] = None
+    x: torch.Tensor, *, kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
-    """Compute (n x n) matrix of inner-products between rows of (n x ?) input 'x'. AKA the Gram matrix.
+    """Compute (n x n) matrix of inner-products between rows of (n x ?) input 'x'. AKA the Gram
+    matrix.
 
     :param x: n by ? matrix of data.
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on kernels.DEFAULT_KERNEL
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on
+        kernels.DEFAULT_KERNEL
     :return: n by n matrix of pairwise inner products
     """
     if kernel is None:
@@ -21,14 +21,13 @@ def inner_product(
 
 
 def cosine(
-        x: torch.Tensor,
-        *,
-        kernel: Union[None, kernels.Kernel] = None
+    x: torch.Tensor, *, kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
     """Compute (n x n) matrix of cosine distances (cosine of angles between vectors).
 
     :param x: n by ? matrix of data.
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on kernels.DEFAULT_KERNEL
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on
+        kernels.DEFAULT_KERNEL
     :return: n by n matrix of cos(theta) where theta is the angle between vectors xi and xj
     """
     inner = inner_product(x, kernel=kernel)
@@ -38,14 +37,13 @@ def cosine(
 
 
 def angle(
-        x: torch.Tensor,
-        *,
-        kernel: Union[None, kernels.Kernel] = None
+    x: torch.Tensor, *, kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
-    """Compute (n x n) matrix of angles between vectors
+    """Compute (n x n) matrix of angles between vectors.
 
     :param x: n by ? matrix of data.
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on kernels.DEFAULT_KERNEL
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on
+        kernels.DEFAULT_KERNEL
     :return: n by n matrix of angles theta between vectors xi and xj
     """
     cos_theta = cosine(x, kernel=kernel)
@@ -53,16 +51,14 @@ def angle(
     return torch.arccos(torch.clip(cos_theta, min=-1.0, max=+1.0))
 
 
-
 def squared_euclidean(
-        x: torch.Tensor,
-        *,
-        kernel: Union[None, kernels.Kernel] = None
+    x: torch.Tensor, *, kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
     """Compute (n x n) matrix of squared Euclidean distances between rows of (n x ?) input 'x'.
 
     :param x: n by ? matrix of data.
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on kernels.DEFAULT_KERNEL
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on
+        kernels.DEFAULT_KERNEL
     :return: n by n matrix of pairwise squared Euclidean distances
     """
     inner = inner_product(x, kernel=kernel)
@@ -70,18 +66,17 @@ def squared_euclidean(
     xx = torch.diag(inner)
     # Clip to zero, otherwise we may get values like -0.000000001 due to numerical imprecision, which become nan inside
     # sqrt() call in euclidean()
-    return torch.clip(xx[:, None] + xx[None, :] - 2 * inner, min=0., max=None)
+    return torch.clip(xx[:, None] + xx[None, :] - 2 * inner, min=0.0, max=None)
 
 
 def euclidean(
-        x: torch.Tensor,
-        *,
-        kernel: Union[None, kernels.Kernel] = None
+    x: torch.Tensor, *, kernel: Union[None, kernels.Kernel] = None
 ) -> torch.Tensor:
     """Compute (n x n) matrix of Euclidean distances between rows of (n x ?) input 'x'.
 
     :param x: n by ? matrix of data.
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on kernels.DEFAULT_KERNEL
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on
+        kernels.DEFAULT_KERNEL
     :return: n by n matrix of pairwise Euclidean distances
     """
     return torch.sqrt(squared_euclidean(x, kernel=kernel))
@@ -114,4 +109,11 @@ def compare(
     return method(x, kernel=kernel)
 
 
-__all__ = ["inner_product", "cosine", "angle", "squared_euclidean", "euclidean", "compare"]
+__all__ = [
+    "inner_product",
+    "cosine",
+    "angle",
+    "squared_euclidean",
+    "euclidean",
+    "compare",
+]

@@ -8,19 +8,21 @@ from repsim import pairwise
 
 
 class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
-    """Compute the angular distance between two representations x and y using the arccos(CKA) method described in the
-    supplement of Williams et al (2021).
+    """Compute the angular distance between two representations x and y using the arccos(CKA) method
+    described in the supplement of Williams et al (2021).
 
-    This metric is equivalent to (i) computing the Gram matrix of inner products of neural data (possibly with a
-    kernel), (ii) centering the matrix, and (iii) normalizing it to unit Frobenius norm. Then, AngularCKA is arc length
-    on the hypersphere with normalized-and-centered Gram matrices
+    This metric is equivalent to (i) computing the Gram matrix of inner products of neural data
+    (possibly with a kernel), (ii) centering the matrix, and (iii) normalizing it to unit Frobenius
+    norm. Then, AngularCKA is arc length on the hypersphere with normalized-and-centered Gram
+    matrices
 
-    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
-        Representations. NeurIPS. https://arxiv.org/abs/2110.14739
+    Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics
+    on Neural     Representations. NeurIPS.
+    https://arxiv.org/abs/2110.14739
     """
 
     def __init__(self, m, kernel=None, use_unbiased_hsic=True):
-        super().__init__(dim=m*(m+1)/2-1, shape=(m, m))
+        super().__init__(dim=m * (m + 1) / 2 - 1, shape=(m, m))
         self._kernel = kernel if kernel is not None else DEFAULT_KERNEL
         self._unbiased = use_unbiased_hsic
 
@@ -29,10 +31,12 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     ###############################################
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
-        """
+        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs
+        using self._kernel."""
         if x.shape[0] != self.shape[0]:
-            raise ValueError(f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}")
+            raise ValueError(
+                f"Expected x to be size ({self.shape[0]}, ?) but is size {x.shape}"
+            )
 
         centered_gram_matrix = center(pairwise.inner_product(x, kernel=self._kernel))
         if self._unbiased:
@@ -41,7 +45,9 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
             # independent samples of x,x'. However, once we mask the centered data it is no longer centered. Hence
             # the _contains_impl() and _project_impl() functions are also modified so that centeredness is only asserted
             # in the biased case, and having all-zero diagonal entries is only asserted in the unbiased case.
-            mask = torch.ones_like(centered_gram_matrix) - torch.eye(self.m, dtype=x.dtype, device=x.device)
+            mask = torch.ones_like(centered_gram_matrix) - torch.eye(
+                self.m, dtype=x.dtype, device=x.device
+            )
             return _matrix_unit_norm(centered_gram_matrix * mask)
         else:
             return _matrix_unit_norm(centered_gram_matrix)
@@ -59,8 +65,10 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _project_impl(self, pt: Point) -> Point:
-        assert pt.shape == (self.m, self.m), \
-            f"Input to AngularCKA.project() must be a m by m matrix but is size {pt.shape}!"
+        assert pt.shape == (
+            self.m,
+            self.m,
+        ), f"Input to AngularCKA.project() must be a m by m matrix but is size {pt.shape}!"
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         if self._unbiased:
@@ -69,12 +77,14 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
             pass
             # 3a. If the unbiased flag is set, we cannot risk calling center() a second time on the same data, since
             # this would be essentially center(mask * center(data)), and the outer center will interact with the mask
-            mask = torch.ones_like(pt) - torch.eye(self.m, dtype=pt.dtype, device=pt.device)
+            mask = torch.ones_like(pt) - torch.eye(
+                self.m, dtype=pt.dtype, device=pt.device
+            )
             pt = _matrix_unit_norm(mask * pt)
         else:
             # 2b. Ensure matrix is positive (semi-) definite by clipping its eigenvalues
             e, v = torch.linalg.eigh(pt)
-            e = torch.clip(e, min=0., max=None)
+            e = torch.clip(e, min=0.0, max=None)
             pt = v @ torch.diag(e) @ v.T
             # 3b. If the unbiased flag is not set, we can be extra careful here and both center and normalize. Centering
             # twice is the same as centering once, so we don't need to worry whether pt is already centered.
@@ -101,7 +111,9 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
             if not is_centered(pt, atol=atol):
                 return False
         # Test unit Frobenius norm
-        if not torch.isclose(torch.linalg.norm(pt, ord='fro'), pt.new_ones((1,)), atol=atol):
+        if not torch.isclose(
+            torch.linalg.norm(pt, ord="fro"), pt.new_ones((1,)), atol=atol
+        ):
             return False
         return True
 
@@ -120,7 +132,8 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         """Compute the geodesic between two points pt_a and pt_b.
 
-        The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of centered Gram matrices.
+        The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of
+        centered Gram matrices.
         """
         # TODO - ideally we would compute CKA using the unbiased HSIC, but then what does that do to the geodesic?
         # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a and ctr_b don't
@@ -151,17 +164,25 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
         # Identical to Hypersphere.log_map
         unscaled_w = self.to_tangent(pt_a, pt_b)
-        norm_w = unscaled_w / torch.clip(torch.sqrt(torch.sum(unscaled_w * unscaled_w)), 1e-7)
+        norm_w = unscaled_w / torch.clip(
+            torch.sqrt(torch.sum(unscaled_w * unscaled_w)), 1e-7
+        )
         return norm_w * self._length_impl(pt_a, pt_b)
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # Refer to Hypersphere.levi_civita
         vec_v = self.log_map(pt_a, pt_b)
         angle = self._length_impl(pt_a, pt_b)
-        unit_v = vec_v / torch.clip(angle, 1e-7)  # the length of tangent vector v *is* the length from a to b
+        unit_v = vec_v / torch.clip(
+            angle, 1e-7
+        )  # the length of tangent vector v *is* the length from a to b
         w_along_v = torch.sum(unit_v * vec_w)
         orth_part = vec_w - w_along_v * unit_v
-        return orth_part + torch.cos(angle) * w_along_v * unit_v - torch.sin(angle) * w_along_v * pt_a
+        return (
+            orth_part
+            + torch.cos(angle) * w_along_v * unit_v
+            - torch.sin(angle) * w_along_v * pt_a
+        )
 
 
 def _matrix_unit_norm(A):
@@ -170,7 +191,7 @@ def _matrix_unit_norm(A):
     :param A: a matrix
     :return: the matrix divided by its Frobenius norm
     """
-    return A / torch.linalg.norm(A, ord='fro')
+    return A / torch.linalg.norm(A, ord="fro")
 
 
 __all__ = ["AngularCKA"]

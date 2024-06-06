@@ -25,11 +25,14 @@ def is_centered(k: torch.Tensor, **kwargs) -> bool:
     # Centering is essentially subtracting the mean. We can test for centeredness by testing if the row- and col-means
     # are both zero
     row_mean, col_mean = torch.mean(k, dim=0), torch.mean(k, dim=1)
-    return torch.allclose(row_mean, torch.zeros_like(row_mean), **kwargs) and \
-        torch.allclose(col_mean, torch.zeros_like(col_mean), **kwargs)
+    return torch.allclose(
+        row_mean, torch.zeros_like(row_mean), **kwargs
+    ) and torch.allclose(col_mean, torch.zeros_like(col_mean), **kwargs)
 
 
-def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True) -> torch.Tensor:
+def hsic(
+    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
+) -> torch.Tensor:
     """Compute Hilbert-Schmidt Independence Criteron (HSIC)
 
     :param k_x: n by n values of kernel applied to all pairs of x data
@@ -66,7 +69,9 @@ def hsic(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased:
         return torch.sum(k_x * k_y) / (n - 1) ** 2
 
 
-def cka(k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True) -> torch.Tensor:
+def cka(
+    k_x: torch.Tensor, k_y: torch.Tensor, centered: bool = False, unbiased: bool = True
+) -> torch.Tensor:
     """Compute Centered Kernel Alignment (CKA).
 
     :param k_x: n by n values of kernel applied to all pairs of x data

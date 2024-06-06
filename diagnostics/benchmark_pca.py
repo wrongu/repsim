@@ -19,7 +19,9 @@ parser.add_argument("--runs", type=int, default=4)
 parser.add_argument("--device", default="cpu")
 parser.add_argument("--hiddens-file", type=Path, default=None)
 parser.add_argument("--seed", type=int, default=24367813)
-parser.add_argument("--save-dir", type=Path, default=Path(__file__).parent / "benchmark_pca")
+parser.add_argument(
+    "--save-dir", type=Path, default=Path(__file__).parent / "benchmark_pca"
+)
 parser.add_argument("--cmap", default="tab10")
 parser.add_argument("--plot", action="store_true")
 args = parser.parse_args()
@@ -37,14 +39,18 @@ if args.hiddens_file is None:
     h, w, f = 16, 16, 32
     hiddens = {
         "random1": torch.randn(args.m, h, w, f, device=args.device, dtype=dtype),
-        "random2": torch.randn(args.m, h//2, w//2, f*2, device=args.device, dtype=dtype),
-        "random3": torch.randn(args.m, h//4, w//4, f*3, device=args.device, dtype=dtype),
+        "random2": torch.randn(
+            args.m, h // 2, w // 2, f * 2, device=args.device, dtype=dtype
+        ),
+        "random3": torch.randn(
+            args.m, h // 4, w // 4, f * 3, device=args.device, dtype=dtype
+        ),
         "random4": torch.randn(args.m, 10, device=args.device, dtype=dtype),
     }
 else:
     suffix = "_real_data"
     hiddens = torch.load(args.hiddens_file, map_location=args.device)
-    hiddens = {k: v[:args.m] for k, v in hiddens.items()}
+    hiddens = {k: v[: args.m] for k, v in hiddens.items()}
 
 args.save_dir.mkdir(exist_ok=True)
 save_file = args.save_dir / f"results_{args.device}{suffix}.pt"
@@ -53,7 +59,7 @@ save_file = args.save_dir / f"results_{args.device}{suffix}.pt"
 SOLVERS = ["full", "full-some", "arpack", "randomized"]
 
 
-def dim_reduce(x, p, method='full'):
+def dim_reduce(x, p, method="full"):
     x = x.reshape(x.shape[0], -1)
     x = x - x.mean(dim=0, keepdim=True)
     if method == "full":
@@ -63,12 +69,22 @@ def dim_reduce(x, p, method='full'):
         _, _, vT = torch.linalg.svd(x, full_matrices=False)
         return torch.einsum("mn,pn->mp", x, vT[:p, :])
     elif method == "arpack":
-        return torch.tensor(PCA(n_components=p, svd_solver='arpack').fit_transform(x.cpu()).astype(np.float32), device=args.device)
+        return torch.tensor(
+            PCA(n_components=p, svd_solver="arpack")
+            .fit_transform(x.cpu())
+            .astype(np.float32),
+            device=args.device,
+        )
     elif method == "randomized":
-        return torch.tensor(PCA(n_components=p, svd_solver='randomized').fit_transform(x.cpu()).astype(np.float32), device=args.device)
+        return torch.tensor(
+            PCA(n_components=p, svd_solver="randomized")
+            .fit_transform(x.cpu())
+            .astype(np.float32),
+            device=args.device,
+        )
 
 
-#%%
+# %%
 results = []
 if save_file.exists():
     precomputed = torch.load(save_file)
@@ -92,21 +108,28 @@ for p in tqdm(pvals, desc="p", position=0, leave=False):
                             reference_x = x if reference_x is None else reference_x
                             telapsed = time.time() - tstart
                         with warnings.catch_warnings():
-                            length = metric.length(reference_x / torch.linalg.norm(reference_x, ord='fro'), x / torch.linalg.norm(x, ord='fro'))
+                            length = metric.length(
+                                reference_x / torch.linalg.norm(reference_x, ord="fro"),
+                                x / torch.linalg.norm(x, ord="fro"),
+                            )
                     except (RuntimeError, ValueError) as e:
-                        print(f"==============================\nError ({p}, {name}, {r}, {method}):\n{e}")
+                        print(
+                            f"==============================\nError ({p}, {name}, {r}, {method}):\n{e}"
+                        )
                         telapsed, length = np.nan, np.nan
                     precomputed[save_key] = (telapsed, length)
                     torch.save(precomputed, save_file)
 
-                results.append({
-                    "method": method,
-                    "layer": name,
-                    "p": p,
-                    "time": telapsed,
-                    "dist": length.item() if torch.is_tensor(length) else length,
-                    "run": r
-                })
+                results.append(
+                    {
+                        "method": method,
+                        "layer": name,
+                        "p": p,
+                        "time": telapsed,
+                        "dist": length.item() if torch.is_tensor(length) else length,
+                        "run": r,
+                    }
+                )
 
 results = pd.DataFrame(results)
 
@@ -115,11 +138,29 @@ if args.plot:
     import seaborn as sns
 
     plt.figure(figsize=(8, 4))
-    sns.lineplot(data=results, x="p", y="time", hue="method", style="layer", markers=True, dashes=False)
+    sns.lineplot(
+        data=results,
+        x="p",
+        y="time",
+        hue="method",
+        style="layer",
+        markers=True,
+        dashes=False,
+    )
     plt.title(f"Time to compute PCA on {args.device} for various dim reduction methods")
     plt.show()
 
     plt.figure(figsize=(8, 4))
-    sns.lineplot(data=results, x="p", y="dist", hue="method", style="layer", markers=True, dashes=False)
-    plt.title(f"ShapeMetric.length(x, method(x)) on {args.device} for various dim reduction methods")
+    sns.lineplot(
+        data=results,
+        x="p",
+        y="dist",
+        hue="method",
+        style="layer",
+        markers=True,
+        dashes=False,
+    )
+    plt.title(
+        f"ShapeMetric.length(x, method(x)) on {args.device} for various dim reduction methods"
+    )
     plt.show()

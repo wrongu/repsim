@@ -36,4 +36,6 @@ def test_kernel_rank(kernel, data_x):
         # NOTE: single-precision runs into some numerical precision issues, but we can assert that the logic makes sense
         # using doubles.
         k_xx = kernel(data_x[:, :p].double())
-        assert torch.linalg.matrix_rank(k_xx, hermitian=True) == min(size_m, kernel.test_rank(p))
+        assert torch.linalg.matrix_rank(k_xx, hermitian=True) == min(
+            size_m, kernel.test_rank(p)
+        )

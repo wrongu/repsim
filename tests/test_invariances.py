@@ -17,7 +17,9 @@ def _randomly_scale(x):
 
 
 def _randomly_affine(x):
-    affine = torch.matrix_exp(torch.randn(x.size(1), x.size(1), dtype=x.dtype, device=x.device) / x.size(1))
+    affine = torch.matrix_exp(
+        torch.randn(x.size(1), x.size(1), dtype=x.dtype, device=x.device) / x.size(1)
+    )
     return x @ affine
 
 
@@ -29,17 +31,19 @@ def _assert_invariant(metric, name, operation, x, y):
     for repeat in range(num_repeats):
         altered_pt_x = metric.neural_data_to_point(operation(x))
         length = metric._length_impl(pt_x, altered_pt_x)
-        assert torch.isclose(length,
-                             pt_x.new_zeros((1,)),
-                             rtol=rtol,
-                             atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
-            f"{metric.string_id()} failed {name} invariance: expected d(x, x') = 0"
+        assert torch.isclose(
+            length,
+            pt_x.new_zeros((1,)),
+            rtol=rtol,
+            atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol,
+        ), f"{metric.string_id()} failed {name} invariance: expected d(x, x') = 0"
         length = metric._length_impl(altered_pt_x, pt_y)
-        assert torch.isclose(length,
-                             base_distance,
-                             rtol=rtol,
-                             atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
-            f"{metric.string_id()} failed {name} invariance: expected d(x', y) = d(x, y)"
+        assert torch.isclose(
+            length,
+            base_distance,
+            rtol=rtol,
+            atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol,
+        ), f"{metric.string_id()} failed {name} invariance: expected d(x', y) = d(x, y)"
 
 
 def _assert_variant(metric, name, operation, x, y):
@@ -50,17 +54,19 @@ def _assert_variant(metric, name, operation, x, y):
     for repeat in range(num_repeats):
         altered_pt_x = metric.neural_data_to_point(operation(x))
         length = metric._length_impl(pt_x, altered_pt_x)
-        assert not torch.isclose(length,
-                                 pt_x.new_zeros((1,)),
-                                 rtol=rtol,
-                                 atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
-            f"{metric.string_id()} failed {name} variance: expected d(x, x') != 0"
+        assert not torch.isclose(
+            length,
+            pt_x.new_zeros((1,)),
+            rtol=rtol,
+            atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol,
+        ), f"{metric.string_id()} failed {name} variance: expected d(x, x') != 0"
         length = metric._length_impl(altered_pt_x, pt_y)
-        assert not torch.isclose(length,
-                                 base_distance,
-                                 rtol=rtol,
-                                 atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol), \
-            f"{metric.string_id()} failed {name} variance: expected d(x', y) != d(x, y)"
+        assert not torch.isclose(
+            length,
+            base_distance,
+            rtol=rtol,
+            atol=spherical_atol(np.cos(length.item())) if metric.is_spherical else atol,
+        ), f"{metric.string_id()} failed {name} variance: expected d(x', y) != d(x, y)"
 
 
 def test_translation_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):

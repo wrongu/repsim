@@ -2,33 +2,45 @@
 
 The role of this file is to define a list of kernels to parametrize kernel tests
 """
+
 import pytest
 import numpy as np
 from repsim.kernels import SquaredExponential, Laplace, Linear
 
 _list_of_kernels = [
-    {"kernel": SquaredExponential(length_scale="auto"),
-     "name": "SqExp[auto]",
-     "rank": lambda p: np.inf},
-    {"kernel": SquaredExponential(length_scale=5.0),
-     "name": "SqExp[5.000]",
-     "rank": lambda p: np.inf},
-    {"kernel": SquaredExponential(length_scale="median/2.0"),
-     "name": "SqExp[median/2.0]",
-     "rank": lambda p: np.inf},
-    {"kernel": Laplace(length_scale="auto"),
-     "name": "Laplace[auto]",
-     "rank": lambda p: np.inf},
-    {"kernel": Laplace(length_scale=5.0),
-     "name": "Laplace[5.000]",
-     "rank": lambda p: np.inf},
-    {"kernel": Laplace(length_scale="median/2.000"),
-     "name": "Laplace[median/2.000]",
-     "rank": lambda p: np.inf},
-    {"kernel": Linear(),
-     "name": "Linear",
-     "rank": lambda p: p},
+    {
+        "kernel": SquaredExponential(length_scale="auto"),
+        "name": "SqExp[auto]",
+        "rank": lambda p: np.inf,
+    },
+    {
+        "kernel": SquaredExponential(length_scale=5.0),
+        "name": "SqExp[5.000]",
+        "rank": lambda p: np.inf,
+    },
+    {
+        "kernel": SquaredExponential(length_scale="median/2.0"),
+        "name": "SqExp[median/2.0]",
+        "rank": lambda p: np.inf,
+    },
+    {
+        "kernel": Laplace(length_scale="auto"),
+        "name": "Laplace[auto]",
+        "rank": lambda p: np.inf,
+    },
+    {
+        "kernel": Laplace(length_scale=5.0),
+        "name": "Laplace[5.000]",
+        "rank": lambda p: np.inf,
+    },
+    {
+        "kernel": Laplace(length_scale="median/2.000"),
+        "name": "Laplace[median/2.000]",
+        "rank": lambda p: np.inf,
+    },
+    {"kernel": Linear(), "name": "Linear", "rank": lambda p: p},
 ]
+
 
 @pytest.fixture(params=_list_of_kernels, ids=lambda p: p["kernel"].string_id())
 def kernel(request):

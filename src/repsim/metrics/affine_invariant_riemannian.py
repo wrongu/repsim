@@ -4,8 +4,16 @@ from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.kernels import DEFAULT_KERNEL
 from repsim import pairwise
-from repsim.util import prod, eig_fun, inv_matrix, matrix_sqrt, inv_matrix_sqrt, matrix_log, matrix_exp, \
-    matrix_pow
+from repsim.util import (
+    prod,
+    eig_fun,
+    inv_matrix,
+    matrix_sqrt,
+    inv_matrix_sqrt,
+    matrix_log,
+    matrix_exp,
+    matrix_pow,
+)
 import warnings
 
 
@@ -28,13 +36,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def __init__(self, m, eps=0.0, *, kernel=None, p=None, mode="gram"):
         if mode == "gram":
-            super().__init__(dim=m*(m+1)/2, shape=(m, m))
+            super().__init__(dim=m * (m + 1) / 2, shape=(m, m))
             if p is not None:
                 warnings.warn("Parameter 'p' has no effect when mode='gram'")
         elif mode == "cov":
             if p is None:
                 raise ValueError("Parameter 'p' is required when mode is 'cov'")
-            super().__init__(dim=p*(p+1)/2, shape=(p, p))
+            super().__init__(dim=p * (p + 1) / 2, shape=(p, p))
             if kernel is not None:
                 warnings.warn("Parameter 'kernel' has no effect when mode='cov'")
         else:
@@ -59,19 +67,23 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
         self._m = new_m
         if self._mode == "gram":
             self.shape = (new_m, new_m)
-            self.dim = new_m*(new_m+1)/2
+            self.dim = new_m * (new_m + 1) / 2
 
     def neural_data_to_point(self, x: NeuralData) -> Point:
-        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs using self._kernel.
-        """
+        """Convert size (m,d) neural data to a size (m,m) Gram matrix of inner products between xs
+        using self._kernel."""
         # Always preprocess by subtracting the mean to ensure translation invariance
         x = x - x.mean(dim=0, keepdims=True)
         if x.shape[0] != self.m:
-            raise ValueError(f"Expected x to be size ({self.m}, ?) but is size {x.shape}")
+            raise ValueError(
+                f"Expected x to be size ({self.m}, ?) but is size {x.shape}"
+            )
         if self._mode == "gram":
             gram_matrix = pairwise.inner_product(x, kernel=self._kernel)
             # Apply regularizer: add a small ridge to the diagonal
-            return gram_matrix + self._eps * torch.eye(self.m, device=x.device, dtype=x.dtype)
+            return gram_matrix + self._eps * torch.eye(
+                self.m, device=x.device, dtype=x.dtype
+            )
         elif self._mode == "cov":
             # Flatten all but first dimension.
             x = torch.reshape(x, (self.m, -1))
@@ -80,15 +92,17 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
             if d > self._p:
                 # PCA to truncate -- project onto top p principal axes (no rescaling)
                 _, _, v = svd(x)
-                x = x @ v[:, :self._p]
+                x = x @ v[:, : self._p]
             elif d < self._p:
                 # Pad zeros
                 num_pad = self._p - d
                 x = torch.hstack([x.view(self.m, d), x.new_zeros(self.m, num_pad)])
             # Compute covariance
-            cov_matrix = torch.einsum('mi,mj->ij', x, x) / (self.m - 1)
+            cov_matrix = torch.einsum("mi,mj->ij", x, x) / (self.m - 1)
             # Apply regularizer: add small ridge
-            return cov_matrix + self._eps * torch.eye(self._p, device=x.device, dtype=x.dtype)
+            return cov_matrix + self._eps * torch.eye(
+                self._p, device=x.device, dtype=x.dtype
+            )
 
     def string_id(self) -> str:
         eps_str = "" if self._eps == 0.0 else f"[{self._eps:.3f}]"
@@ -106,12 +120,13 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _project_impl(self, pt: Point) -> Point:
-        assert pt.shape == self.shape, \
-            f"Input to AffineInvariantRiemannian.project() must be a {self.shape} matrix but is size {pt.shape}!"
+        assert (
+            pt.shape == self.shape
+        ), f"Input to AffineInvariantRiemannian.project() must be a {self.shape} matrix but is size {pt.shape}!"
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         # 2. Ensure matrix is positive definite by clipping its eigenvalues
-        pt = eig_fun(pt, lambda e: torch.clip(e, min=0., max=None))
+        pt = eig_fun(pt, lambda e: torch.clip(e, min=0.0, max=None))
         return pt
 
     def _contains_impl(self, pt: Point, atol: float = 1e-6) -> bool:
@@ -129,8 +144,11 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
         # If rank-deficient, return infinity and be done early
-        if torch.linalg.matrix_rank(pt_a) < self.shape[0] or torch.linalg.matrix_rank(pt_b) < self.shape[0]:
-            return torch.tensor([float('inf')], dtype=pt_a.dtype, device=pt_a.device)
+        if (
+            torch.linalg.matrix_rank(pt_a) < self.shape[0]
+            or torch.linalg.matrix_rank(pt_b) < self.shape[0]
+        ):
+            return torch.tensor([float("inf")], dtype=pt_a.dtype, device=pt_a.device)
         # TODO - do we need eps and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
         # and therefore dist --> infinity?
         inv_a_half = inv_matrix_sqrt(pt_a)
@@ -167,7 +185,7 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
         inv_base_point = inv_matrix(pt_a)
-        return torch.einsum('ij,ji->', inv_base_point @ vec_w, inv_base_point @ vec_v)
+        return torch.einsum("ij,ji->", inv_base_point @ vec_w, inv_base_point @ vec_v)
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # See equation (3.12) in [1].
