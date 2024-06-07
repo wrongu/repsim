@@ -1,6 +1,12 @@
 # Dev/debug files
 tmp*.py
 demo*.py
+diagnostics/**/*.pth
+diagnostics/**/*.png
+diagnostics/**/*.svg
+
+# OS caches
+**/.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
