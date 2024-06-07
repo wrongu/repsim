@@ -74,9 +74,10 @@ def test_compare_points(metric, data_x, data_y):
     assert not torch.isnan(val_yx) and not torch.isnan(
         val_xy
     ), f"NaN value in compare() using method {metric.string_id()}"
-    assert torch.isclose(
-        val_yx, val_xy, rtol=rtol, atol=atol
-    ), f"Asymmetry in comparison using method {metric.string_id()}: {val_yx.item()} vs {val_xy.item()}"
+    assert torch.isclose(val_yx, val_xy, rtol=rtol, atol=atol), (
+        f"Asymmetry in comparison using method {metric.string_id()}: "
+        f"{val_yx.item()} vs {val_xy.item()}"
+    )
 
 
 def test_riemmannian_rank_deficient_inf_distance(data_x, data_y):
@@ -84,8 +85,9 @@ def test_riemmannian_rank_deficient_inf_distance(data_x, data_y):
         size_n < size_m
     ), "Test constants changed?! Rank deficiency test assumes n < m"
     unregularized = AffineInvariantRiemannian(m=size_m, eps=0.0)
-    # We expect the unregularized method to fail when x,y have more rows than columns.
-    # (Note that in @test_compare_random_data above, specifying method="riemannian" defaults to a regularized version)
+    # We expect the unregularized method to fail when x,y have more rows than columns. (Note that
+    # in @test_compare_random_data above, specifying method="riemannian" defaults to a
+    # regularized version)
     assert torch.isinf(
         compare(
             data_x, data_y, method=unregularized, kernel_x=Linear(), kernel_y=Linear()

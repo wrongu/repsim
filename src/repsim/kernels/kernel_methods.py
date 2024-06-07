@@ -22,8 +22,8 @@ def center(k: torch.Tensor) -> torch.Tensor:
 
 
 def is_centered(k: torch.Tensor, **kwargs) -> bool:
-    # Centering is essentially subtracting the mean. We can test for centeredness by testing if the row- and col-means
-    # are both zero
+    # Centering is essentially subtracting the mean. We can test for centeredness by testing if
+    # the row- and col-means are both zero
     row_mean, col_mean = torch.mean(k, dim=0), torch.mean(k, dim=1)
     return torch.allclose(
         row_mean, torch.zeros_like(row_mean), **kwargs
@@ -38,7 +38,8 @@ def hsic(
     :param k_x: n by n values of kernel applied to all pairs of x data
     :param k_y: n by n values of kernel on y data
     :param centered: whether or not at least one kernel is already centered
-    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original estimator of Gretton et al (2005)
+    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original
+        estimator of Gretton et al (2005)
     :return: scalar score in [0*, inf) measuring dependence of x and y
 
     * note that if unbiased=True, it is possible to get small values below 0.
@@ -77,7 +78,8 @@ def cka(
     :param k_x: n by n values of kernel applied to all pairs of x data
     :param k_y: n by n values of kernel on y data
     :param centered: whether or not at least one kernel is already centered
-    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original estimator of Gretton et al (2005)
+    :param unbiased: if True, use unbiased HSIC estimator of Song et al (2007), else use original
+        estimator of Gretton et al (2005)
     :return: scalar score in [0*, 1] measuring normalized dependence between x and y.
 
     * note that if unbiased=True, it is possible to get small values below 0.

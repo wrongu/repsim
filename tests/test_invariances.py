@@ -98,7 +98,8 @@ def test_rotation_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):
 
 
 def test_scale_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):
-    # Note: tests/metrics.py defines all metrics and creates metric.test_high_rank_data and metric.test_scale_invariant
+    # Note: tests/metrics.py defines all metrics and creates metric.test_high_rank_data and
+    # metric.test_scale_invariant
     if metric.test_high_rank_data:
         x, y = high_rank_x, high_rank_y
     else:
@@ -111,7 +112,8 @@ def test_scale_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):
 
 
 def test_affine_invariance(metric, data_x, data_y, high_rank_x, high_rank_y):
-    # Note: tests/metrics.py defines all metrics and creates metric.test_high_rank_data and metric.test_affine_invariant
+    # Note: tests/metrics.py defines all metrics and creates metric.test_high_rank_data and
+    # metric.test_affine_invariant
     if metric.test_high_rank_data:
         x, y = high_rank_x, high_rank_y
     else:

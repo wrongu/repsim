@@ -1,7 +1,7 @@
-"""tests/metrics.py
+"""tests/metrics.py.
 
-The role of this file is to define a list of metrics. Every metric defined here will have every test run on it, if that
-test 'requests' it by declaring a 'metric' parameter.
+The role of this file is to define a list of metrics. Every metric defined here will have every test
+run on it, if that test 'requests' it by declaring a 'metric' parameter.
 """
 
 import pytest
@@ -32,7 +32,8 @@ _list_of_metrics = [
         "scale-invariant": True,
         "affine-invariant": False,
     },
-    # Next two tests: assert that scale invariance is due to adaptive length scale in the kernel when using sqexp
+    # Next two tests: assert that scale invariance is due to adaptive length scale in the kernel
+    # when using sqexp
     {
         "metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale="median")),
         "name": f"AngularCKA.unb.SqExp[median].{size_m}",
@@ -43,7 +44,8 @@ _list_of_metrics = [
         "scale-invariant": True,
         "affine-invariant": False,
     },
-    # Warning: due to precision issues of float32, sometimes too-small length_scale values will fail tests!
+    # Warning: due to precision issues of float32, sometimes too-small length_scale values will
+    # fail tests!
     {
         "metric": AngularCKA(size_m, kernel=SquaredExponential(length_scale=10.0)),
         "name": f"AngularCKA.unb.SqExp[10.000].{size_m}",
@@ -122,7 +124,8 @@ _list_of_metrics = [
         "scale-invariant": True,
         "affine-invariant": True,
     },
-    # ...unless p<n, in which case they will in general lose affine invariance because top-p PCs changed
+    # ...unless p<n, in which case they will in general lose affine invariance because top-p PCs
+    # changed
     {
         "metric": EuclideanShapeMetric(m=size_m, p=size_n // 2, alpha=0.0),
         "name": f"ShapeMetric[0.00][{size_n//2}][euclidean].{size_m}",
@@ -154,7 +157,8 @@ _list_of_metrics = [
         "scale-invariant": False,  # (!!) EuclideanShapeMetric is not scale invariant when alpha > 0
         "affine-invariant": False,
     },
-    # Shape metrics are also not affine-invariant when doing partial (alpha=0.5) or no (alpha=1.0) whitening
+    # Shape metrics are also not affine-invariant when doing partial (alpha=0.5) or no (
+    # alpha=1.0) whitening
     {
         "metric": EuclideanShapeMetric(m=size_m, p=size_n, alpha=0.5),
         "name": f"ShapeMetric[0.50][{size_n}][euclidean].{size_m}",
@@ -243,9 +247,10 @@ _list_of_metrics = [
 @pytest.fixture(params=_list_of_metrics, ids=lambda p: p["metric"].string_id())
 def metric(request):
     m = request.param["metric"]
-    # Add other properties listed in _list_of_metrics as instance variables on the metric object, prefixed with
-    # "test_" to avoid naming conflicts. In other words, this loop adds properties like m.test_rotation_invariant and
-    # m.test_high_rank_data based on key, value pairs in the list at the top of this file.
+    # Add other properties listed in _list_of_metrics as instance variables on the metric object,
+    # prefixed with "test_" to avoid naming conflicts. In other words, this loop adds properties
+    # like m.test_rotation_invariant and m.test_high_rank_data based on key, value pairs in the
+    # list at the top of this file.
     d = m.__dict__
     for k, v in request.param.items():
         if k == "metric":

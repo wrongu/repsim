@@ -20,18 +20,21 @@ import warnings
 class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     """Compute the 'affine-invariant Riemannian metric', as advocated for by [1].
 
-    NOTE: given (m,d) sized inputs, this involves inverting a (m,m)-sized matrix, which might be rank-deficient. The
-    authors of [1] got around this by switching the inner-product to be across conditions, and compared (d,d)-sized
-    matrices. However, this no longer suffices as a general RSA tool, since in general d_x will not equal d_y.
+    NOTE: given (m,d) sized inputs, this involves inverting a (m,m)-sized matrix, which might be
+    rank-deficient. The authors of [1] got around this by switching the inner-product to be
+    across conditions, and compared (d,d)-sized matrices. However, this no longer suffices as a
+    general RSA tool, since in general d_x will not equal d_y.
 
-    We get around this one of two ways. First, using a kernel with an infinite basis all but guarantees invertability.
-    However, if some neural data contains duplicate rows (e.g. one-hot labels), then the resulting Gram matrix will
-    still be rank-deficient. Second, we regularize the m by m Gram matrix by emphasizing its diagonal (adding eps times
-    the identity matrix). Note that these regularization methods mean that the resulting metric may not actually be
+    We get around this one of two ways. First, using a kernel with an infinite basis all but
+    guarantees invertability. However, if some neural data contains duplicate rows (e.g. one-hot
+    labels), then the resulting Gram matrix will still be rank-deficient. Second, we regularize
+    the m by m Gram matrix by emphasizing its diagonal (adding eps times the identity matrix).
+    Note that these regularization methods mean that the resulting metric may not actually be
     affine-invariant!
 
-    [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian manifold to compare
-        representations in brain and in models. NeuroImage. https://doi.org/10.1016/j.neuroimage.2021.118271
+    [1] Shahbazi, M., Shirali, A., Aghajan, H., & Nili, H. (2021). Using distance on the Riemannian
+        manifold to compare representations in brain and in models. NeuroImage.
+        https://doi.org/10.1016/j.neuroimage.2021.118271
     """
 
     def __init__(self, m, eps=0.0, *, kernel=None, p=None, mode="gram"):
@@ -120,9 +123,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _project_impl(self, pt: Point) -> Point:
-        assert (
-            pt.shape == self.shape
-        ), f"Input to AffineInvariantRiemannian.project() must be a {self.shape} matrix but is size {pt.shape}!"
+        assert pt.shape == self.shape, (
+            f"Input to AffineInvariantRiemannian.project() must be a {self.shape} matrix "
+            f"but is size {pt.shape}!"
+        )
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         # 2. Ensure matrix is positive definite by clipping its eigenvalues
@@ -149,8 +153,8 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
             or torch.linalg.matrix_rank(pt_b) < self.shape[0]
         ):
             return torch.tensor([float("inf")], dtype=pt_a.dtype, device=pt_a.device)
-        # TODO - do we need eps and rank checks if we use a pseudo-inverse instead? Or will eigs be zero
-        # and therefore dist --> infinity?
+        # TODO - do we need eps and rank checks if we use a pseudo-inverse instead? Or will eigs
+        #  be zero and therefore dist --> infinity?
         inv_a_half = inv_matrix_sqrt(pt_a)
         x_inv_y = inv_a_half @ pt_b @ inv_a_half
         log_eigs = torch.log(torch.linalg.eigvals(x_inv_y).real)
@@ -163,9 +167,10 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
         a_half = matrix_sqrt(pt_a)
         inv_a_half = inv_matrix_sqrt(pt_a)
-        # See equations (3.12) and (3.13) in [1]. Here we combine them and simplify a bit algebraically.
-        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
-        # in Medical Image Analysis. Elsevier Ltd. https://doi.org/10.1016/B978-0-12-814725-2.00010-8
+        # See equations (3.12) and (3.13) in [1]. Here we combine them and simplify a bit
+        # algebraically. [1] Pennec, X. (2019). Manifold-valued image processing with SPD
+        # matrices. In Riemannian Geometric Statistics in Medical Image Analysis. Elsevier Ltd.
+        # https://doi.org/10.1016/B978-0-12-814725-2.00010-8
         #
         # Long version:
         #   log_a_b = a_half @ _matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
@@ -189,26 +194,27 @@ class AffineInvariantRiemannian(RepresentationMetricSpace, RiemannianSpace):
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
         # See equation (3.12) in [1].
-        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In
+        #   Riemannian Geometric Statistics
         a_half = matrix_sqrt(pt_a)
         inv_a_half = inv_matrix_sqrt(pt_a)
         return a_half @ matrix_exp(inv_a_half @ vec_w @ inv_a_half) @ a_half
 
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
         # See equation (3.13) in [1].
-        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In
+        #   Riemannian Geometric Statistics
         a_half = matrix_sqrt(pt_a)
         inv_a_half = inv_matrix_sqrt(pt_a)
         return a_half @ matrix_log(inv_a_half @ pt_b @ inv_a_half) @ a_half
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
         # See equation (3.15) in [1].
-        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In Riemannian Geometric Statistics
-        # vec_v = self.log_map(pt_a, pt_b)
-        # return -1/2*(vec_v @ torch.linalg.solve(pt_a, vec_w) + vec_w @ torch.linalg.solve(pt_a, vec_v))
+        # [1] Pennec, X. (2019). Manifold-valued image processing with SPD matrices. In
+        #   Riemannian Geometric Statistics
         a_half = matrix_sqrt(pt_a)
         inv_a_half = inv_matrix_sqrt(pt_a)
         e = a_half @ matrix_sqrt(inv_a_half @ pt_b @ inv_a_half) @ inv_a_half
-        # Include to_tangent() to be absolutely sure the output lands in the tangent space of pt_b despite numerical
-        # imprecision
+        # Include to_tangent() to be absolutely sure the output lands in the tangent space of
+        # pt_b despite numerical imprecision
         return self.to_tangent(pt_b, e @ vec_w @ e.T)

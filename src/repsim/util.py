@@ -28,8 +28,8 @@ def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     :param y: m by d matrix of d-dimensional values
     :return: n by m matrix of squared pairwise distances
     """
-    nx, dx = x.size()[0], x.size()[1:]
-    ny, dy = x.size()[0], x.size()[1:]
+    _, dx = x.size()[0], x.size()[1:]
+    _, dy = x.size()[0], x.size()[1:]
     if dx != dy:
         raise ValueError(
             f"x and y must have same second dimension but are {dx} and {dy}"
@@ -37,7 +37,8 @@ def pdist2(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     xx = torch.einsum("i...,i...->i", x, x)
     yy = torch.einsum("j...,j...->j", y, y)
     xy = torch.einsum("i...,j...->ij", x, y)
-    # Using (x-y)*(x-y) = x*x + y+y - 2*x*y, and clipping in [0, inf) just in case of numerical imprecision
+    # Using (x-y)*(x-y) = x*x + y+y - 2*x*y, and clipping in [0, inf) just in case of numerical
+    # imprecision
     return torch.clip(xx[:, None] + yy[None, :] - 2 * xy, 0.0, None)
 
 

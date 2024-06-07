@@ -8,8 +8,8 @@ from tests.kernels import kernel
 
 @pytest.fixture(autouse=True)
 def set_global_test_seed():
-    # Seed chosen by keyboard mashing. Per the torch docs, this sets seeds on all devices. Per the pytest docs, this
-    # being an 'autouse' fixture means it will be run before every test.
+    # Seed chosen by keyboard mashing. Per the torch docs, this sets seeds on all devices. Per
+    # the pytest docs, this being an 'autouse' fixture means it will be run before every test.
     torch.manual_seed(348628013)
     np.random.seed(5387290)
 

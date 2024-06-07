@@ -16,7 +16,8 @@ class RepresentationMetricSpace(LengthSpace, abc.ABC):
 
     @property
     def m(self):
-        # By default, assume that self.m is the first index of self.shape. May be overridden if need be.
+        # By default, assume that self.m is the first index of self.shape. May be overridden if
+        # need be.
         return self.shape[0]
 
     @m.setter

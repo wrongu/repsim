@@ -27,10 +27,12 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
             )
         pairwise_dist = pairwise.euclidean(x, kernel=self._kernel)
 
-        # TODO - we should treat Stress as a spherical metric when _rescale=True since this acts as a constraint
+        # TODO - we should treat Stress as a spherical metric when _rescale=True since this acts
+        #  as a constraint
         if self._rescale:
-            # When 'rescale' flag is set, pairwise distances are normalized so that their median distance is 1.
-            # This rescaling step can be used to make Stress scale-invariant even when using a Linear kernel.
+            # When 'rescale' flag is set, pairwise distances are normalized so that their median
+            # distance is 1. This rescaling step can be used to make Stress scale-invariant even
+            # when using a Linear kernel.
             pairwise_dist = pairwise_dist / torch.median(upper_triangle(pairwise_dist))
 
         return pairwise_dist
@@ -47,7 +49,8 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     #################################
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
-        # sqrt of mean squared difference (euclidean, scaled by 2/m(m-1)) in distances from upper-triangle of RDMs
+        # sqrt of mean squared difference (euclidean, scaled by 2/m(m-1)) in distances from
+        # upper-triangle of RDMs
         diff_in_dist = upper_triangle(pt_a - pt_b)
         return torch.sqrt(torch.mean(diff_in_dist**2))
 
@@ -85,12 +88,13 @@ class Stress(RepresentationMetricSpace, RiemannianSpace):
     #####################################
 
     def to_tangent(self, pt_a: Point, vec_w: Vector) -> Vector:
-        # Find the nearest matrix to vec_w - in the Frobenius sense - that is symmetric and has zero diagonal
+        # Find the nearest matrix to vec_w - in the Frobenius sense - that is symmetric and has
+        # zero diagonal
         return (vec_w + vec_w.T) / 2 * (1.0 - torch.eye(self.m))
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
-        # The usual inner-product in the ambient space, with a twist: since we defined _length_impl using only the upper
-        # triangle of RDMs, we need to do the same here.
+        # The usual inner-product in the ambient space, with a twist: since we defined
+        # _length_impl using only the upper triangle of RDMs, we need to do the same here.
         return torch.mean(upper_triangle(vec_w * vec_v))
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:

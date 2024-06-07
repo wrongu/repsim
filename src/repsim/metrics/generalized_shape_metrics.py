@@ -27,7 +27,8 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
     # Implement RepresentationMetricSpace methods #
     ###############################################
 
-    # TODO - allow p=None in which case no reshaping is done and matrices are always cast to the larger dimension in comparisons
+    # TODO - allow p=None in which case no reshaping is done and matrices are always cast to the
+    #  larger dimension in comparisons
     def neural_data_to_point(self, x: NeuralData) -> Point:
         """Convert size (m,d) neural data to a size (m,p) matrix. If d>p then we keep the top p
         dimensions by PCA. If d<p we pad with zeros.
@@ -69,9 +70,10 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 
     @property
     def is_spherical(self) -> bool:
-        # TODO - when we whiten data with alpha=0, we are effectively projecting onto the unit sphere. So we should
-        #  consider that case 'spherical' too. But for 0<alpha<1 and score_method='euclidean' it is neither spherical
-        #  nor not-spherical. We currently don't handle that case particularly well.
+        # TODO - when we whiten data with alpha=0, we are effectively projecting onto the unit
+        #  sphere. So we should consider that case 'spherical' too. But for 0<alpha<1 and
+        #  score_method='euclidean' it is neither spherical nor not-spherical. We currently don't
+        #  handle that case particularly well.
         return self._score_method == "angular"
 
     #################################
@@ -200,24 +202,27 @@ class PreShapeMetric(RepresentationMetricSpace, RiemannianSpace):
 class ShapeMetric(PreShapeMetric):
     """Compute the generalized shape-metrics advocated by [1]
 
-    Implementation is paraphrased from https://github.com/ahwillia/netrep/, but follows our interface rather than the
-    scikit-learn interface. Inspiration is also taken from https://github.com/geomstats/.
+    Implementation is paraphrased from https://github.com/ahwillia/netrep/, but follows our
+    interface rather than the scikit-learn interface. Inspiration is also taken from
+    https://github.com/geomstats/.
 
     Note on the practical differences between PreShape and Shape:
-    - Shape space decomposes the PreShape tangent space into vertical (within equivalence class) and horizontal (across
-        equivalence class) parts.
-    - Shape.to_tangent is not overridden, so Shape.to_tangent(pt, vec) will in general contain both horz and vert parts
+    - Shape space decomposes the PreShape tangent space into vertical (within equivalence class) and
+        horizontal (across equivalence class) parts.
+    - Shape.to_tangent is not overridden, so Shape.to_tangent(pt, vec) will in general contain both
+        horz and vert parts
     - Shape.exp_map and Shape.levi_civita both respect the vertical part
     - Shape.log_map returns *only* the horizontal part
     - Shape.inner_product only takes the horizontal part
-    This means that exp_map and log_map are not exact inverses up to _equality_. However, they are inverses up to
-    _equivalence_.
+    This means that exp_map and log_map are not exact inverses up to _equality_. However, they are
+    inverses up to _equivalence_.
 
-    Known bug (!) the EuclideanShapeMetric should not be used with alpha<1.0 until we add some fancier geometry to
-    handle the fact that (partial) whitening induces additional (partial) restrictions
+    Known bug (!) ShapeMetrics do not have consistent geometry with alpha<1.0 until we add some
+    fancier geometry to handle the fact that (partial) whitening induces additional (partial)
+    constraints on the space.
 
-    [1] Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape Metrics on Neural
-        Representations. NeurIPS. https://arxiv.org/abs/2110.14739
+    [1] Williams, A. H., Kunz, E., Kornblith, S., & Linderman, S. W. (2021). Generalized Shape
+        Metrics on Neural Representations. NeurIPS. https://arxiv.org/abs/2110.14739
     """
 
     def string_id(self) -> str:
@@ -236,7 +241,8 @@ class ShapeMetric(PreShapeMetric):
     #########################################
 
     def _geodesic_impl(self, pt_a: Point, pt_b: Point, frac: float = 0.5) -> Point:
-        # Choice of anchor here is largely arbitrary, but for local consistency with log_map we set it to 'a'
+        # Choice of anchor here is largely arbitrary, but for local consistency with log_map we
+        # set it to 'a'
         return super(ShapeMetric, self)._geodesic_impl(
             *_orthogonal_procrustes(pt_a, pt_b, anchor="a"), frac
         )
@@ -267,7 +273,8 @@ class ShapeMetric(PreShapeMetric):
         """Find A such that x@A is the vertical part of vec_w at pt_a."""
         # Start by ensuring vec_w is a tangent vector in the pre-shape space
         vec_w = super(ShapeMetric, self).to_tangent(pt_a, vec_w)
-        # See equation (2) in Nava-Yazdani et al (2020), but note that all of our equations are transposed from theirs
+        # See equation (2) in Nava-Yazdani et al (2020), but note that all of our equations are
+        # transposed from theirs
         xxT = pt_a.T @ pt_a
         wxT = vec_w.T @ pt_a
         return _solve_sylvester(xxT, xxT, wxT - wxT.T)
@@ -284,40 +291,45 @@ class ShapeMetric(PreShapeMetric):
         return pt_a @ self._solve_skew_symmetric_vertical_tangent(pt_a, vec_w)
 
     def inner_product(self, pt_a: Point, vec_w: Vector, vec_v: Vector):
-        # Ensure that we're only measuring the 'horizontal' part of each tangent vector. (We expect distance between
-        # two points to be equal to square root norm of the logarithmic map between them).
+        # Ensure that we're only measuring the 'horizontal' part of each tangent vector. (We
+        # expect distance between two points to be equal to square root norm of the logarithmic
+        # map between them).
         h_vec_w, h_vec_v = self._horizontal_tangent(
             pt_a, vec_w
         ), self._horizontal_tangent(pt_a, vec_v)
         return super(ShapeMetric, self).inner_product(pt_a, h_vec_w, h_vec_v)
 
     def exp_map(self, pt_a: Point, vec_w: Vector) -> Point:
-        # Decompose into horizontal and vertical parts. The vertical part specifies a rotation in the sense that
-        # Skew-Symmetric matrices are the tangent space of SO(p), and the vertical part equals Ax for some
-        # skew-symmetric matrix A. We get from skew-symmetry to rotation using the matrix exponential, i.e.
-        # rotation_matrix = matrix_exp(skew_symmetric_matrix)
+        # Decompose into horizontal and vertical parts. The vertical part specifies a rotation in
+        # the sense that Skew-Symmetric matrices are the tangent space of SO(p), and the vertical
+        # part equals Ax for some skew-symmetric matrix A. We get from skew-symmetry to rotation
+        # using the matrix exponential, i.e. rotation_matrix = matrix_exp(skew_symmetric_matrix)
         mat_a = self._solve_skew_symmetric_vertical_tangent(pt_a, vec_w)
         rotation = torch.matrix_exp(mat_a)
         horz_part = self._horizontal_tangent(pt_a, vec_w, vert_part=pt_a @ mat_a)
-        # Apply vertical part, and note that rotation is equivariant with respect to horizontal vectors, or
-        # horz_Rx(Rw)=Rhorz_x(w). This means that we (1) rotate pt_a to pt_a', and (2) the new horizontal vector at
-        # pt_a' is equal to the rotation applied to the original horizontal vector
+        # Apply vertical part, and note that rotation is equivariant with respect to horizontal
+        # vectors, or horz_Rx(Rw)=Rhorz_x(w). This means that we (1) rotate pt_a to pt_a',
+        # and (2) the new horizontal vector at pt_a' is equal to the rotation applied to the
+        # original horizontal vector
         pt_a, horz_part = pt_a @ rotation, horz_part @ rotation
-        # After applying the vertical part, delegate to the ambient PreShapeSpace for the remaining horizontal part
+        # After applying the vertical part, delegate to the ambient PreShapeSpace for the
+        # remaining horizontal part
         return super(ShapeMetric, self).exp_map(pt_a, horz_part)
 
     def log_map(self, pt_a: Point, pt_b: Point) -> Vector:
-        # Only returns *horizontal* part of the tangent. Note that this means log_map and exp_map are not inverses
-        # from the perspective of the PreShapeSpace, but they are in the ShapeSpace. In other words, if
-        # c=exp_map(a,log_map(a,b)), then we'll have length(b,c)=0 but not b==c
-        # Method: align b to a and get a-->b' horizontal part from the PreShapeSpace's log_map
+        # Only returns *horizontal* part of the tangent. Note that this means log_map and exp_map
+        # are not inverses from the perspective of the PreShapeSpace, but they are in the
+        # ShapeSpace. In other words, if c=exp_map(a,log_map(a,b)), then we'll have length(b,
+        # c)=0 but not b==c Method: align b to a and get a-->b' horizontal part from the
+        # PreShapeSpace's log_map
         _, new_b = _orthogonal_procrustes(pt_a, pt_b, anchor="a")
         return super(ShapeMetric, self).log_map(pt_a, new_b)
 
     def levi_civita(self, pt_a: Point, pt_b: Point, vec_w: Vector) -> Vector:
-        # Both the horizontal and vertical parts of tangent vectors are equivariant after rotation (Lemma 1b of
-        # Nava-Yazdani et al (2020)). This means we can start by aligning a to b as follows to take care of the vertical
-        # part, then all that's left is to transport the horizontal part:
+        # Both the horizontal and vertical parts of tangent vectors are equivariant after
+        # rotation (Lemma 1b of Nava-Yazdani et al (2020)). This means we can start by aligning a
+        # to b as follows to take care of the vertical part, then all that's left is to transport
+        # the horizontal part:
         r_a, _ = _orthogonal_procrustes_rotation(pt_a, pt_b, anchor="b")
         new_pt_a, new_vec_w = pt_a @ r_a, vec_w @ r_a
         return super(ShapeMetric, self).levi_civita(new_pt_a, pt_b, new_vec_w)
@@ -356,9 +368,10 @@ def _orthogonal_procrustes_rotation(a, b, anchor="middle"):
     """
     with torch.no_grad():
         u, _, v = torch.linalg.svd(a.T @ b)
-    # Helpful trick to see how these are related: u is the inverse of u.T, and likewise v is inverse of v.T. We get to
-    # the anchor=a and anchor=b solutions by right-multiplying both return values by u.T or right-multiplying both
-    # return values by v, respectively (if both return values are rotated in the same way, it preserves the shape).
+    # Helpful trick to see how these are related: u is the inverse of u.T, and likewise v is
+    # inverse of v.T. We get to the anchor=a and anchor=b solutions by right-multiplying both
+    # return values by u.T or right-multiplying both return values by v, respectively (if both
+    # return values are rotated in the same way, it preserves the shape).
     if anchor == "middle":
         return u, v.T
     elif anchor == "a":
@@ -397,8 +410,8 @@ def _whiten(x, alpha, clip_eigs=1e-9):
     e, v = eigh(x.T @ x / len(x))
     e = torch.clip(e, min=clip_eigs, max=None)
     d = alpha + (1 - alpha) * (e**-0.5)
-    # From right to left, the transformation (1) projects x onto v, (2) divides by stdev in each direction, and (3)
-    # rotates back to align with original directions in x-space (ZCA)
+    # From right to left, the transformation (1) projects x onto v, (2) divides by stdev in each
+    # direction, and (3) rotates back to align with original directions in x-space (ZCA)
     z = v @ torch.diag(d) @ v.T
     # Think of this as (z @ x.T).T, but note z==z.T
     return x @ z
@@ -408,8 +421,9 @@ def _dim_reduce(x, p):
     # PCA to truncate -- project onto top p principal axes (no rescaling)
     with torch.no_grad():
         _, _, vT = torch.linalg.svd(x, full_matrices=False)
-    # svd returns v.T, so the principal axes are in the *rows*. The following einsum is equivalent to x @ vT.T[:, :p]
-    # but a bit faster because the transpose is not actually performed.
+    # svd returns v.T, so the principal axes are in the *rows*. The following einsum is
+    # equivalent to x @ vT.T[:, :p] but a bit faster because the transpose is not actually
+    # performed.
     return torch.einsum("mn,pn->mp", x, vT[:p, :])
 
 
@@ -420,7 +434,8 @@ def _pad_zeros(x, p):
 
 
 def _solve_sylvester(a, b, q):
-    # TODO - implement natively in pytorch so we don't have to convert to numpy on CPU and back again
+    # TODO - implement natively in pytorch so we don't have to convert to numpy on CPU and back
+    #  again
     a_np, b_np, q_np = (
         a.detach().cpu().numpy(),
         b.detach().cpu().numpy(),

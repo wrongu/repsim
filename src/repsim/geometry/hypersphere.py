@@ -5,8 +5,7 @@ from repsim.geometry.trig import slerp
 
 
 class HyperSphere(RiemannianSpace):
-    """Class for handling geometric operations on an n-dimensional
-    hypersphere."""
+    """Class for handling geometric operations on an n-dimensional hypersphere."""
 
     def __init__(self, dim):
         # a dim-dimensional sphere has points that live in dim+1-dimensional space

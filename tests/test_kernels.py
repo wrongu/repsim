@@ -33,8 +33,8 @@ def test_centering_is_idempotent_data(kernel, data_x):
 
 def test_kernel_rank(kernel, data_x):
     for p in [5, 10, 20, 30]:
-        # NOTE: single-precision runs into some numerical precision issues, but we can assert that the logic makes sense
-        # using doubles.
+        # NOTE: single-precision runs into some numerical precision issues, but we can assert
+        # that the logic makes sense using doubles.
         k_xx = kernel(data_x[:, :p].double())
         assert torch.linalg.matrix_rank(k_xx, hermitian=True) == min(
             size_m, kernel.test_rank(p)

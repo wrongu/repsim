@@ -28,7 +28,8 @@ class ManifoldPCA(BaseEstimator):
     ) -> Any:
         if X == "no_validation":
             return X
-        # Override BaseEstimator._validate_data; just ensure that all points in X are on the manifold
+        # Override BaseEstimator._validate_data; just ensure that all points in X are on the
+        # manifold
         return torch.stack([self.space.project(x) for x in X], dim=0)
 
     def fit(self, X, y=None, init=None):

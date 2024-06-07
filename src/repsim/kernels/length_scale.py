@@ -49,4 +49,7 @@ def auto_length_scale(x: torch.Tensor, expression: str) -> float:
     return eval(expression, {}, expression_locals)
 
 
-__all__ = ["median_euclidean", "auto_length_scale"]
+__all__ = [
+    "median_euclidean",
+    "auto_length_scale",
+]

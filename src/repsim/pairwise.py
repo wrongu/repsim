@@ -47,7 +47,8 @@ def angle(
     :return: n by n matrix of angles theta between vectors xi and xj
     """
     cos_theta = cosine(x, kernel=kernel)
-    # Include clipping because sometimes we get things like cosine(x,x)=1.000000000001, the arccos() of which is NaN
+    # Include clipping because sometimes we get things like cosine(x,x)=1.000000000001,
+    # the arccos() of which is NaN
     return torch.arccos(torch.clip(cos_theta, min=-1.0, max=+1.0))
 
 
@@ -64,8 +65,8 @@ def squared_euclidean(
     inner = inner_product(x, kernel=kernel)
     # Using ||x - y||^2 = ||x||^2 + ||y||^2 - 2 <x, y>
     xx = torch.diag(inner)
-    # Clip to zero, otherwise we may get values like -0.000000001 due to numerical imprecision, which become nan inside
-    # sqrt() call in euclidean()
+    # Clip to zero, otherwise we may get values like -0.000000001 due to numerical imprecision,
+    # which become nan inside sqrt() call in euclidean()
     return torch.clip(xx[:, None] + xx[None, :] - 2 * inner, min=0.0, max=None)
 
 
@@ -101,8 +102,10 @@ def compare(
 
     :param x: n by d matrix of data.
     :param type: a CompareType enum value - one of (INNER_PRODUCT, ANGLE, DISTANCE, SQUARE_DISTANCE)
-    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on a Linear kernel
-    :return: n by n matrix of pairwise comparisons (similarity, distance, or squared distance, depending on 'type')
+    :param kernel: a kernels.Kernel instance, or None. Defaults to None, which falls back on a
+        Linear kernel
+    :return: n by n matrix of pairwise comparisons (similarity, distance, or squared distance,
+        depending on 'type')
     """
 
     method = TYPE_TO_METHOD[type]

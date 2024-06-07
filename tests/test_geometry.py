@@ -60,12 +60,14 @@ def test_geodesic(metric, data_x, data_y, high_rank_x, high_rank_y):
     assert metric.contains(
         pt_z, atol=atol
     ), f"point_along failed contains() test at frac={frac:.4f}  using {metric}, {metric}"
-    assert np.isclose(
-        dist_xy, dist_xz + dist_zy, atol=atol, rtol=rtol
-    ), f"point_along at frac={frac:.4f} not along geodesic: d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
-    assert np.isclose(
-        dist_xz / dist_xy, frac, atol=atol, rtol=rtol
-    ), f"point_along failed to divide the total length: frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
+    assert np.isclose(dist_xy, dist_xz + dist_zy, atol=atol, rtol=rtol), (
+        f"point_along at frac={frac:.4f} not along geodesic: "
+        f"d(x,y) is {dist_xy:.4f} but d(x,m)+d(m,y) is {dist_xz + dist_zy:.4f}"
+    )
+    assert np.isclose(dist_xz / dist_xy, frac, atol=atol, rtol=rtol), (
+        f"point_along failed to divide the total length: "
+        f"frac is {frac:.4f} but d(x,m)/d(x,y) is {dist_xz/dist_xy:.4f}"
+    )
 
     ang = angle(metric, pt_x, pt_z, pt_y).item()
     assert np.abs(ang - np.pi) < spherical_atol(
@@ -104,7 +106,8 @@ def test_geodesic_gradient_descent(metric, data_x, data_y, high_rank_x, high_ran
 
     # Case 1: compute geodesic using closed-form solution
     k_z_closed_form = GeodesicLengthSpace.geodesic(metric, p_x, p_y, frac=frac)
-    # Case 2: compute geodesic using gradient descent - set tolerance to something << the value we're going to assert
+    # Case 2: compute geodesic using gradient descent - set tolerance to something << the value
+    # we're going to assert
     k_z_grad_descent = LengthSpace.geodesic(
         metric,
         p_x,
@@ -176,8 +179,9 @@ def test_inner_product(metric, data_x, data_y, high_rank_x, high_rank_y):
         metric.length(pt_x, pt_y), metric.norm(pt_x, vec_w)
     ), "Norm of tangent != length from x to y"
 
-    # Note: it can happen (esp. with Stress) where exp_map(pt_x, norm_vec_w) lands outside of the constraints. We would like
-    # to assert that length(pt_x, exp_map(pt_x, norm_vec_w))==1., but loop here in case exp_map goes out of bounds.
+    # Note: it can happen (esp. with Stress) where exp_map(pt_x, norm_vec_w) lands outside of the
+    # constraints. We would like to assert that length(pt_x, exp_map(pt_x, norm_vec_w))==1.,
+    # but loop here in case exp_map goes out of bounds.
     scale, pt_z = 1.0, metric.exp_map(pt_x, norm_vec_w)
     while not metric.contains(pt_z):
         scale = scale / 2
@@ -239,7 +243,8 @@ def test_parallel_transport(
         length_u_x, length_u_y, rtol=rtol
     ), "map did not preserve length of u"
 
-    # Test 4: inner products are preserved by the map (this involves creating a new random tangent v_x at x)
+    # Test 4: inner products are preserved by the map (this involves creating a new random
+    # tangent v_x at x)
     v_x = metric.to_tangent(
         pt_x, torch.randn(u_x.size(), dtype=pt_x.dtype) / np.sqrt(u_x.numel())
     )
@@ -307,9 +312,10 @@ def test_projection_by_binary_search(
     assert metric.contains(
         proj, atol=atol
     ), f"Projected point failed contains() test using {metric}, {metric}"
-    assert np.isclose(
-        dist_xy, dist_xp + dist_py, atol=atol
-    ), f"Projected point not along geodesic: d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+    assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), (
+        f"Projected point not along geodesic: "
+        f"d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+    )
 
     frac = np.random.rand(1)[0]
     pt_geo = metric.geodesic(pt_x, pt_y, frac)
@@ -364,23 +370,26 @@ def test_projection_by_tangent_iteration(
     ), f"Projected point failed contains() test using {metric}, {metric}"
     if direction == +1 and dist_xp < dist_xy:
         # order is [x, proj, y] and so d(x,p)+d(p,y) should be equal to d(x,y)
-        assert np.isclose(
-            dist_xy, dist_xp + dist_py, atol=atol
-        ), f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+        assert np.isclose(dist_xy, dist_xp + dist_py, atol=atol), (
+            f"Projected point not along geodesic (case [x,y,p]): "
+            f"d(x,y) is {dist_xy} but d(x,p)+d(p,y) is {dist_xp + dist_py}"
+        )
         # Angle(x,p,y) should be pi
         assert np.abs(a - np.pi) < spherical_atol(-1.0)
     elif direction == +1 and dist_xp >= dist_xy:
         # order is [x, y, proj] and so d(x,y) should be equal to d(x,p)-d(p,y)
-        assert np.isclose(
-            dist_xy, dist_xp - dist_py, atol=atol
-        ), f"Projected point not along geodesic (case [x,y,p]): d(x,y) is {dist_xy} but d(x,p)-d(p,y) is {dist_xp - dist_py}"
+        assert np.isclose(dist_xy, dist_xp - dist_py, atol=atol), (
+            f"Projected point not along geodesic (case [x,y,p]): "
+            f"d(x,y) is {dist_xy} but d(x,p)-d(p,y) is {dist_xp - dist_py}"
+        )
         # Angle(x,p,y) should be 0
         assert np.abs(a) < spherical_atol(1.0)
     elif direction == -1:
         # order is [proj, x, y] and so d(x,y) should be equal to d(p,y)-d(p,x)
-        assert np.isclose(
-            dist_xy, dist_py - dist_xp, atol=atol
-        ), f"Projected point not along geodesic (case [p,x,y]): d(x,y) is {dist_xy} but d(p,y)-d(p,x) is {dist_py - dist_xp}"
+        assert np.isclose(dist_xy, dist_py - dist_xp, atol=atol), (
+            f"Projected point not along geodesic (case [p,x,y]): "
+            f"d(x,y) is {dist_xy} but d(p,y)-d(p,x) is {dist_py - dist_xp}"
+        )
         # Angle(x,p,y) should be 0
         assert np.abs(a) < spherical_atol(1.0)
 

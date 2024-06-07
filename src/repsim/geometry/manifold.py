@@ -18,7 +18,9 @@ class LengthSpace(abc.ABC):
     (i) the identity property, or d(pt_a, pt_a) = 0
     (ii) the symmetry property, or d(pt_a, pt_b) = d(pt_b, pt_a)
     (iii) the triangle inequality, or d(pt_a, pt_c) <= d(pt_a, pt_b) + d(pt_b, pt_c)
-    And a *length* space is a metric space with the additional property that distances describe the length of a path:
+
+    And a *length* space is a metric space with the additional property that distances describe the
+    length of a path:
     (iv) d(pt_a, pt_b) = sum_i^N d(x_{i-1}, x_i) along a shortest path where x_0=pt_a and x_N=pt_b
 
     Properties of a LengthSpace include
@@ -114,12 +116,13 @@ class LengthSpace(abc.ABC):
 
         :param pt_a: starting point of the geodesic
         :param pt_b: ending point of the geodesic
-        :param init_pt: (optional) starting point for the search. Defaults to self.project(frac*pt_b + (1-frac)*pt_a)
+        :param init_pt: (optional) starting point for the search. Defaults to
+               self.project(frac*pt_b + (1-frac)*pt_a)
         :param frac: fraction of distance from a to b
         :param **kwargs: configure optimization
         :return: a new Point, pt_c, such that
-            1. it is on the geodesic, so length(pt_a, pt_c)+length(pt_c, pt_b) = length(pt_a, pt_b) and
-            2. it divides the total length by 'frac', so frac = length(pt_a, pt_c) / length(pt_a, pt_b)
+            1. it is on the geodesic, so length(pt_a, pt_c)+length(pt_c, pt_b) = length(pt_a, pt_b)
+            2. it divides the total length by 'frac'; frac = length(pt_a, pt_c) / length(pt_a, pt_b)
         """
         if frac < 0.0 or frac > 1.0:
             raise ValueError(f"'frac' must be in [0, 1] but is {frac}")
@@ -151,7 +154,8 @@ class LengthSpace(abc.ABC):
         pt, status = minimize(self, loss_fn, pt, **kwargs)
         if status != OptimResult.CONVERGED:
             warnings.warn(
-                f"Minimization failed to converge! Status is {status}. Geodesic point may be unreliable"
+                f"Minimization failed to converge! Status is {status}. "
+                f"Geodesic point may be unreliable"
             )
         return pt
 
@@ -167,8 +171,8 @@ class GeodesicLengthSpace(LengthSpace):
         :param pt_b: ending point of the geodesic
         :param frac: fraction of distance from a to b
         :return: a new Point, pt_c, such that
-            1. it is on the geodesic, so length(pt_a, pt_c)+length(pt_c, pt_b) = length(pt_a, pt_b) and
-            2. it divides the total length by 'frac', so frac = length(pt_a, pt_c) / length(pt_a, pt_b)
+            1. it is on the geodesic, so length(pt_a, pt_c)+length(pt_c, pt_b) = length(pt_a, pt_b)
+            2. it divides the total length by 'frac'; frac = length(pt_a, pt_c) / length(pt_a, pt_b)
         """
         if len(kwargs) > 0:
             warnings.warn(

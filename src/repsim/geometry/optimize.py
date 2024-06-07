@@ -43,9 +43,12 @@ def minimize(
     :param fn_tol: convergence tolerance for changes in the function
     :param init_step_size: initial gradient descent step size
     :param max_step_size: largest sane gradient descent step size
-    :param wolfe_c1: threshold on first Wolfe condition (progress check - is function improving at least a little?)
-    :param wolfe_c2: threshold on second Wolfe condition (curvature check - is gradient changing by not too much?)
-    :param wolfe_c2_min: rarely both conditions fail, so we reduce c2. Stop trying to do thise when wolfe_c2 < wolfe_c2_min
+    :param wolfe_c1: threshold on first Wolfe condition (progress check - is function improving at
+        least a little?)
+    :param wolfe_c2: threshold on second Wolfe condition (curvature check - is gradient changing by
+        not too much?)
+    :param wolfe_c2_min: rarely both conditions fail, so we reduce c2. Stop trying to do thise when
+        wolfe_c2 < wolfe_c2_min
     :param max_iter: break regardless of convergence if this many steps reached
     :return: tuple of (point, OptimResult) where the OptimResult indicates convergence status
     """
@@ -83,14 +86,16 @@ def minimize(
             # Step size is too big - adjust and loop, leaving pt, fval, and grad unchanged
             step_size *= 0.8
         else:
-            # Both conditions violated, indicating that the curvature is high (so condition 2 fails) and the function is
-            # barely changing (so condition 1 fails). When this first happens, we can make some more (slow) progress by
-            # making the threshold on c2 less strict. But eventually we will give up when wolfe_c2 < wolfe_c2_min
+            # Both conditions violated, indicating that the curvature is high (so condition 2
+            # fails) and the function is barely changing (so condition 1 fails). When this first
+            # happens, we can make some more (slow) progress by making the threshold on c2 less
+            # strict. But eventually we will give up when wolfe_c2 < wolfe_c2_min
             wolfe_c2 *= 0.8
             if wolfe_c2 < wolfe_c2_min:
                 return pt, OptimResult.CONDITIONS_VIOLATED
             elif new_fval < fval:
-                # Despite condition weirdness, the new fval still improved. Accept the new point then loop.
+                # Despite condition weirdness, the new fval still improved. Accept the new point
+                # then loop.
                 pt, fval, grad = new_pt.clone(), new_fval, new_grad
 
     # Max iterations reached – return final value of 'pt' with flag indicating max steps reached
@@ -112,16 +117,18 @@ def project_by_binary_search(
     """Find 'projection' of pt_c onto a geodesic that spans [pt_a, pt_b] by recursively halving the
     geodesic that connects pt_a to pt_b.
 
-    Note: because this *subdivides* the geodesic, it can only interpolate between pt_a and pt_b not extrapolate. If
-    extrapolation is required, use project_by_tangent_iteration
+    Note: because this *subdivides* the geodesic, it can only interpolate between pt_a and pt_b
+    not extrapolate. If extrapolation is required, use project_by_tangent_iteration
 
     :param space: a LengthSpace defining the metric and geodesic
     :param pt_a: start point of the geodesic
     :param pt_b: end point of the geodesic
     :param pt_c: point to be projected
     :param tol: result will be within this tolerance, as measured by space.length
-    :param max_recurse: how many halvings is too many halvings? 0.5^20 gives a resolution of about 1 part per million
-    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
+    :param max_recurse: how many halvings is too many halvings? 0.5^20 gives a resolution of about 1
+        part per million
+    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to],
+        such that the length
     from pt_a to pt_x is minimized
     """
     if dist_a_b is None:
@@ -134,19 +141,20 @@ def project_by_binary_search(
     # Break-early case 1: pt_c is already along a geodesic
     if torch.isclose(dist_a_c + dist_c_b, dist_a_b, atol=tol):
         return pt_c.clone(), OptimResult.CONVERGED
-    # Break-early case 2: pt_a and pt_b are equivalent (note that this does not mean they are 'identical'). Return
-    # a midpoint between a and b.
+    # Break-early case 2: pt_a and pt_b are equivalent (note that this does not mean they are
+    # 'identical'). Return a midpoint between a and b.
     elif dist_a_b < tol:
         return midpoint(space, pt_a, pt_b), OptimResult.CONVERGED
-    # Break-early case 3: we've recursed and subdivided too many times. Return a copy of pt_a or pt_b - whichever is
-    # closer
+    # Break-early case 3: we've recursed and subdivided too many times. Return a copy of pt_a or
+    # pt_b - whichever is closer
     if max_recurse == 0:
         if dist_a_c < dist_c_b:
             return pt_a.clone(), OptimResult.MAX_STEPS_REACHED
         else:
             return pt_b.clone(), OptimResult.MAX_STEPS_REACHED
 
-    # Get a midpoint between 'fro' and 'to'. TODO if multiple geodesics, need to pick whichever is closest to pt_c
+    # Get a midpoint between 'fro' and 'to'.
+    # TODO if multiple geodesics, need to pick whichever is closest to pt_c
     mid = midpoint(space, pt_a, pt_b)
 
     # Distance from midpoint to pt_c
@@ -199,15 +207,16 @@ def project_by_tangent_iteration(
     :param pt_c: point to be projected
     :param tol: declare convergence once inner-product of tangent vectors is within 'tol' of zero
     :param max_iterations: max iterations
-    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to], such that the length
-    from pt_a to pt_x is minimized
+    :return: pt_x, a point on the manifold that lies along a geodesic connecting [pt_fro, pt_to],
+        such that the length from pt_a to pt_x is minimized
     """
 
     dist_ab = space.length(pt_a, pt_b)
 
-    # Break-early if pt_a and pt_b are equivalent (note that this does not mean they are 'identical'). Return
-    # a midpoint between a and b and flag result as ill-posed, since we don't have a good sense of the 'direction' from
-    # a to b and therefore no good sense of how to extrapolate the geodesic
+    # Break-early if pt_a and pt_b are equivalent (note that this does not mean they are
+    # 'identical'). Return a midpoint between a and b and flag result as ill-posed, since we
+    # don't have a good sense of the 'direction' from a to b and therefore no good sense of how
+    # to extrapolate the geodesic
     if dist_ab < tol:
         return midpoint(space, pt_a, pt_b), OptimResult.ILL_POSED
 
@@ -229,7 +238,8 @@ def project_by_tangent_iteration(
         # If length of step size is less than tol, declare convergence
         if torch.abs(length_pc_along_ab) < tol:
             return proj, OptimResult.CONVERGED
-        # Get new value for pt_a by moving 'length_ac_along_ab' distance in the ab direction, which may be negative
+        # Get new value for pt_a by moving 'length_ac_along_ab' distance in the ab direction,
+        # which may be negative
         t = t + length_pc_along_ab
         proj = space.exp_map(pt_a, t * tangent_ab_norm)
     return pt_a, OptimResult.MAX_STEPS_REACHED

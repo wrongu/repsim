@@ -56,18 +56,20 @@ def _spherical_mds_single(
     # Iteratively adjust one point at a time using Agarwal et al' algorithm
     sphere = HyperSphere(dim=dim)
     sq_stress = _squared_stress(z)
-    # Each z[i] gets its own 'updater', which is an object that will help nudge z[i] closer to other z[j]s
+    # Each z[i] gets its own 'updater', which is an object that will help nudge z[i] closer to
+    # other z[j]s
     updaters = [IterativeFrechetMean(sphere) for _ in z]
     for itr in range(max_iter):
-        # Reset each 'updater'; when resetting to n=0, it takes big steps, and when resetting to n=big, it takes smaller
-        # steps. We want to take smaller and smaller steps as 'itr' gets bigger, so reset with n=itr.
+        # Reset each 'updater'; when resetting to n=0, it takes big steps, and when resetting to
+        # n=big, it takes smaller steps. We want to take smaller and smaller steps as 'itr' gets
+        # bigger, so reset with n=itr.
         for u in updaters:
             u.reset(n=itr)
-        # For each z[i], loop over z[j]s and nudge the value of z[i] towards those z[j]s. Use randperm so we get a
-        # different order of z[i]s in each loop
+        # For each z[i], loop over z[j]s and nudge the value of z[i] towards those z[j]s. Use
+        # randperm so we get a different order of z[i]s in each loop
         for i in torch.randperm(n_samples):
-            # For each z_j, draw an arc from z_j to z_i and find the point along that line that is the 'correct'
-            # distance away. Call it hat_z_j
+            # For each z_j, draw an arc from z_j to z_i and find the point along that line that
+            # is the 'correct' distance away. Call it hat_z_j
             idx_j = (
                 torch.randperm(n_samples)
                 if max_inner_loop is None
@@ -194,7 +196,8 @@ class SphericalMDS(BaseEstimator):
         if self.dissimilarity == "precomputed":
             if not _is_arc_length_matrix(X):
                 raise ValueError(
-                    "With dissimilarity='precomputed', X must be a valid matrix of pairwise arc-distances."
+                    "With dissimilarity='precomputed', X must be a valid matrix "
+                    "of pairwise arc-distances."
                 )
             self.dissimilarity_matrix_ = X
         elif self.dissimilarity == "arc length":
@@ -220,7 +223,8 @@ class SphericalMDS(BaseEstimator):
 
 
 def pairwise_arc_lengths(X, center):
-    # TODO - implement batch-wise and pair-wise operations natively in HyperSphere (and other spaces)
+    # TODO - implement batch-wise and pair-wise operations natively in HyperSphere (and other
+    #  spaces)
     if center:
         X = X - torch.mean(X, 0)
     dot_ij = X @ X.T
@@ -237,9 +241,10 @@ def _is_arc_length_matrix(X):
         return False
     if not torch.all(X >= 0.0) or not torch.all(X <= np.pi):
         return False
-    # The diagonal often comes from arccos(dot(a,b)), and we generally care more about precision in the dot() part.
-    # Note that arccos(0.999) = .045, which is still 'far from zero'. So instead of asserting that the diagonal is zero,
-    # we'll assert that it's as close to zero as can be expected based on 'tolerance' error in the dot() part.
+    # The diagonal often comes from arccos(dot(a,b)), and we generally care more about precision
+    # in the dot() part. Note that arccos(0.999) = .045, which is still 'far from zero'. So
+    # instead of asserting that the diagonal is zero, we'll assert that it's as close to zero as
+    # can be expected based on 'tolerance' error in the dot() part.
     if not torch.all(X.diag().abs() < np.arccos(1.0 - tolerance)):
         if torch.all(X.diag().abs() < np.arccos(1.0 - soft_tolerance)):
             warnings.warn(

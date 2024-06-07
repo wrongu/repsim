@@ -1,4 +1,4 @@
-"""tests/kernels.py
+"""tests/kernels.py.
 
 The role of this file is to define a list of kernels to parametrize kernel tests
 """
@@ -45,9 +45,10 @@ _list_of_kernels = [
 @pytest.fixture(params=_list_of_kernels, ids=lambda p: p["kernel"].string_id())
 def kernel(request):
     m = request.param["kernel"]
-    # Add other properties listed in _list_of_kernels as instance variables on the metric object, prefixed with
-    # "test_" to avoid naming conflicts. In other words, this loop adds properties like m.test_rotation_invariant and
-    # m.test_high_rank_data based on key, value pairs in the list at the top of this file.
+    # Add other properties listed in _list_of_kernels as instance variables on the metric object,
+    # prefixed with "test_" to avoid naming conflicts. In other words, this loop adds properties
+    # like m.test_rotation_invariant and m.test_high_rank_data based on key, value pairs in the
+    # list at the top of this file.
     d = m.__dict__
     for k, v in request.param.items():
         if k == "kernel":

@@ -34,10 +34,12 @@ def slerp(pt_a: Point, pt_b: Point, frac: float) -> Point:
     # Check some more break-early cases based on dot product result.
     eps = 1e-6
     if dot_ab > 1.0 - eps:
-        # dot(a,b) is effectively 1, so A and B are effectively the same vector. Do Euclidean interpolation.
+        # dot(a,b) is effectively 1, so A and B are effectively the same vector. Do Euclidean
+        # interpolation.
         return _norm(a * (1 - frac) + b * frac)
     elif dot_ab < -1 + eps:
-        # dot(a,b) is effectively -1, so A and B are effectively at opposite poles. There are infinitely many geodesics.
+        # dot(a,b) is effectively -1, so A and B are effectively at opposite poles. There are
+        # infinitely many geodesics.
         raise ValueError("A and B are andipodal - cannot SLERP")
 
     # Get 'omega' - the angle between a and b, clipping for numerical stability
@@ -65,15 +67,16 @@ def angle(
     :return:
     """
     if isinstance(space, RiemannianSpace):
-        # Riemannian manifolds have tangent spaces and inner products that we can use to compute the angle easily
+        # Riemannian manifolds have tangent spaces and inner products that we can use to compute
+        # the angle easily
         tangent_ba, tangent_bc = space.log_map(pt_b, pt_a), space.log_map(pt_b, pt_c)
         norm_ba = tangent_ba / space.norm(pt_b, tangent_ba)
         norm_bc = tangent_bc / space.norm(pt_b, tangent_bc)
         cos_b = space.inner_product(pt_b, norm_ba, norm_bc)
         return torch.arccos(torch.clip(cos_b, -1.0, 1.0))
     else:
-        # In general length spaces, we'll approximate the angle by constructing a point 1/1000th of the way from B to
-        # each of A and C, then use the law of cosines locally
+        # In general length spaces, we'll approximate the angle by constructing a point 1/1000th
+        # of the way from B to each of A and C, then use the law of cosines locally
         delta = kwargs.pop("delta", 1e-3)
         pt_ba = space.geodesic(pt_b, pt_a, frac=delta, **kwargs)
         pt_bc = space.geodesic(pt_b, pt_c, frac=delta, **kwargs)

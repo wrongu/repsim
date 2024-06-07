@@ -3,7 +3,7 @@ import numpy as np
 from .representation_metric_space import RepresentationMetricSpace, NeuralData
 from repsim.geometry import RiemannianSpace, Point, Scalar, Vector
 from repsim.geometry.trig import slerp
-from repsim.kernels import center, is_centered, hsic, DEFAULT_KERNEL
+from repsim.kernels import center, is_centered, DEFAULT_KERNEL
 from repsim import pairwise
 
 
@@ -40,11 +40,13 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
 
         centered_gram_matrix = center(pairwise.inner_product(x, kernel=self._kernel))
         if self._unbiased:
-            # What makes this 'unbiased' is, essentially, that we get rid of all of the k(x,x) terms in the Gram matrix,
-            # leaving only the k(x,x') terms for x!=x'. This makes the inner product inside of CKA depend only on
-            # independent samples of x,x'. However, once we mask the centered data it is no longer centered. Hence
-            # the _contains_impl() and _project_impl() functions are also modified so that centeredness is only asserted
-            # in the biased case, and having all-zero diagonal entries is only asserted in the unbiased case.
+            # What makes this 'unbiased' is, essentially, that we get rid of all of the k(x,
+            # x) terms in the Gram matrix, leaving only the k(x,x') terms for x!=x'. This makes
+            # the inner product inside of CKA depend only on independent samples of x,
+            # x'. However, once we mask the centered data it is no longer centered. Hence the
+            # _contains_impl() and _project_impl() functions are also modified so that
+            # centeredness is only asserted in the biased case, and having all-zero diagonal
+            # entries is only asserted in the unbiased case.
             mask = torch.ones_like(centered_gram_matrix) - torch.eye(
                 self.m, dtype=x.dtype, device=x.device
             )
@@ -72,11 +74,12 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         # 1. Ensure matrix is symmetric
         pt = (pt + pt.T) / 2
         if self._unbiased:
-            # 2a. Normally we would enforce positive (semi-) definiteness, but we can't guarantee that here due to
-            # the masking of the diagonal of the pt matrix
+            # 2a. Normally we would enforce positive (semi-) definiteness, but we can't guarantee
+            # that here due to the masking of the diagonal of the pt matrix
             pass
-            # 3a. If the unbiased flag is set, we cannot risk calling center() a second time on the same data, since
-            # this would be essentially center(mask * center(data)), and the outer center will interact with the mask
+            # 3a. If the unbiased flag is set, we cannot risk calling center() a second time on
+            # the same data, since this would be essentially center(mask * center(data)),
+            # and the outer center will interact with the mask
             mask = torch.ones_like(pt) - torch.eye(
                 self.m, dtype=pt.dtype, device=pt.device
             )
@@ -86,8 +89,9 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
             e, v = torch.linalg.eigh(pt)
             e = torch.clip(e, min=0.0, max=None)
             pt = v @ torch.diag(e) @ v.T
-            # 3b. If the unbiased flag is not set, we can be extra careful here and both center and normalize. Centering
-            # twice is the same as centering once, so we don't need to worry whether pt is already centered.
+            # 3b. If the unbiased flag is not set, we can be extra careful here and both center
+            # and normalize. Centering twice is the same as centering once, so we don't need to
+            # worry whether pt is already centered.
             pt = _matrix_unit_norm(center(pt))
         return pt
 
@@ -118,11 +122,12 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         return True
 
     def _length_impl(self, pt_a: Point, pt_b: Point) -> Scalar:
-        # Assume pt_a and pt_b pass all tests in self.contains(), i.e. they are normalized and centered Gram matrices
-        # Note that no denominator is needed here because of the normalization step already included in
-        # neural_data_to_point() and project()
+        # Assume pt_a and pt_b pass all tests in self.contains(), i.e. they are normalized and
+        # centered Gram matrices Note that no denominator is needed here because of the
+        # normalization step already included in neural_data_to_point() and project()
         cka = torch.sum(pt_a * pt_b)
-        # Clipping because arccos(1.00000000001) gives NaN, and some numerical error can cause that to happen
+        # Clipping because arccos(1.00000000001) gives NaN, and some numerical error can cause
+        # that to happen
         return torch.arccos(torch.clip(cka, -1.0, 1.0))
 
     #########################################
@@ -135,8 +140,10 @@ class AngularCKA(RepresentationMetricSpace, RiemannianSpace):
         The main idea is to use SLERP, since AngularCKA is an arc length on the unit hypersphere of
         centered Gram matrices.
         """
-        # TODO - ideally we would compute CKA using the unbiased HSIC, but then what does that do to the geodesic?
-        # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a and ctr_b don't
+        # TODO - ideally we would compute CKA using the unbiased HSIC, but then what does that do
+        #  to the geodesic?
+        # Note: slerp normalizes for us, so the returned point will have unit norm even if ctr_a
+        # and ctr_b don't
         return self.project(slerp(pt_a, pt_b, frac))
 
     #####################################
